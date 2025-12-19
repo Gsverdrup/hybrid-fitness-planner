@@ -1,12 +1,13 @@
-import { useState } from 'react'
-import './App.css'
+import { useEffect } from 'react';
 
 function App() {
-  return (
-    <main className="p-8">
-      <h1 className="text-2xl font-bold">Hybrid Fitness Planner</h1>
-    </main>
-  );
+  useEffect(() => {
+    fetch('http://localhost:3001/health')
+      .then(res => res.json())
+      .then(console.log);
+  }, []);
+
+  return <h1>Hybrid Fitness Planner</h1>;
 }
 
 export default App;
