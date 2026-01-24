@@ -1,10 +1,27 @@
 import { FitnessProfile } from "../domain/fitnessProfile";
 import { DailyPlan, WeeklyPlan, RunWorkout, LiftType } from "../domain/weeklyPlan";
-import e from "express";
 
 export function generateWeeklyPlan(
   profile: FitnessProfile
 ): WeeklyPlan {
+  // Check for zero mileage
+  if (profile.currentWeeklyMileage <= 0) {
+    throw new FitnessProfileError("Weekly mileage must be greater than zero to generate a plan.");
+  }
+
+  // Enforce minimum run days based on weekly mileage
+  if (profile.currentWeeklyMileage >= 40 && profile.runDaysPerWeek < 5) {
+    throw new FitnessProfileError("For weekly mileage of 40 or more, at least 5 run days per week are required.");
+  }
+  if (profile.currentWeeklyMileage >= 55 && profile.runDaysPerWeek < 6) {
+    throw new FitnessProfileError("For weekly mileage of 55 or more, at least 6 run days per week are required.");
+  }
+
+  // Enforce minimum lift days if strength goal
+  if (profile.goal === "strength" && profile.liftDaysPerWeek < 3) {
+    throw new FitnessProfileError("For strength goal, at least 3 lift days per week are required.");
+  }
+
   // Initialize empty week
   const days: DailyPlan[] = Array.from({ length: 7 }, (_, i) => ({
     day: i,
@@ -47,10 +64,58 @@ export function generateWeeklyPlan(
   }
   const easyDayCount = Math.max(0, profile.runDaysPerWeek - workoutDayCount - 1);
 
-  const milesPerWorkout = workoutDayCount > 0 ? Number((workoutMiles / workoutDayCount).toFixed(1)) : 0;
-  const milesPerEasy = easyDayCount > 0 ? Number((totalEasyMiles / easyDayCount).toFixed(1)) : 0;
+  let milesPerWorkout = workoutDayCount > 0 ? roundToNearestQuarter(workoutMiles / workoutDayCount) : 0;
+  let milesPerEasy = easyDayCount > 0 ? roundToNearestQuarter(totalEasyMiles / easyDayCount) : 0;
 
-  // 3. Assign Run Workouts
+  // 3. Cap workout and easy miles to avoid over-assignment
+  if (profile.runningLevel == "beginner" || profile.goal == "general" || profile.goal == "strength") {
+    if (milesPerWorkout > profile.currentWeeklyMileage * 0.15) {
+      // Cap workout miles and reassign excess to easy runs
+      const excess = milesPerWorkout - roundToNearestQuarter(profile.currentWeeklyMileage * 0.15);
+      milesPerWorkout = roundToNearestQuarter(profile.currentWeeklyMileage * 0.15);
+      totalEasyMiles += excess * workoutDayCount;
+      milesPerEasy = easyDayCount > 0 ? roundToNearestQuarter(totalEasyMiles / easyDayCount) : 0;
+    }
+    if (milesPerEasy > profile.currentWeeklyMileage * 0.15) {
+      // Cap easy miles
+      milesPerEasy = roundToNearestQuarter(profile.currentWeeklyMileage * 0.15);
+    }
+  }
+  if (profile.goal == "5k" || profile.goal == "10k") {
+    if (milesPerWorkout > profile.currentWeeklyMileage * 0.18) {
+      // Cap workout miles and reassign excess to easy runs
+      const excess = milesPerWorkout - roundToNearestQuarter(profile.currentWeeklyMileage * 0.18);
+      milesPerWorkout = roundToNearestQuarter(profile.currentWeeklyMileage * 0.18);
+      totalEasyMiles += excess * workoutDayCount;
+      milesPerEasy = easyDayCount > 0 ? roundToNearestQuarter(totalEasyMiles / easyDayCount) : 0;
+    }
+    if (milesPerEasy > profile.currentWeeklyMileage * 0.18) {
+      // Cap easy miles
+      milesPerEasy = roundToNearestQuarter(profile.currentWeeklyMileage * 0.18);
+    }
+  }
+  if (profile.goal == "half-marathon" || profile.goal == "marathon") {
+    if (milesPerWorkout > profile.currentWeeklyMileage * 0.20) {
+      // Cap workout miles and reassign excess to easy runs
+      const excess = milesPerWorkout - roundToNearestQuarter(profile.currentWeeklyMileage * 0.20);
+      milesPerWorkout = roundToNearestQuarter(profile.currentWeeklyMileage * 0.20);
+      totalEasyMiles += excess * workoutDayCount;
+      milesPerEasy = easyDayCount > 0 ? roundToNearestQuarter(totalEasyMiles / easyDayCount) : 0;
+    }
+    if (milesPerEasy > profile.currentWeeklyMileage * 0.20) {
+      // Cap easy miles
+      milesPerEasy = roundToNearestQuarter(profile.currentWeeklyMileage * 0.20);
+    }
+  }
+
+  // Clamp miles per easy run to be less than long run miles
+  if (milesPerEasy >= longRunMiles) {
+    milesPerEasy = roundToNearestQuarter(longRunMiles * 0.75);
+    totalEasyMiles = milesPerEasy * easyDayCount;
+  }
+
+
+  // 4. Assign Run Workouts
   let remainingWorkouts = workoutDayCount;
   let remainingEasy = easyDayCount;
 
@@ -58,7 +123,7 @@ export function generateWeeklyPlan(
   days[profile.longRunDay].workouts.push({
     type: "run",
     runType: "long",
-    miles: longRunMiles,
+    miles: roundToNearestQuarter(longRunMiles),
   });
 
   // Distribute other runs
@@ -89,7 +154,7 @@ export function generateWeeklyPlan(
   }
 
 
-  // 4. Assign lifts
+  // 5. Assign lifts
   const liftDays = [...profile.liftDays];
   const totalLiftDays = profile.liftDaysPerWeek;
 
@@ -144,4 +209,15 @@ export function generateWeeklyPlan(
   }
 
   return { days };
+}
+
+function roundToNearestQuarter(num: number): number {
+  return Math.round(num * 4) / 4;
+}
+
+class FitnessProfileError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "FitnessProfileError";
+  }
 }
