@@ -4,23 +4,8 @@ import { DailyPlan, WeeklyPlan, RunWorkout, LiftType } from "../domain/weeklyPla
 export function generateWeeklyPlan(
   profile: FitnessProfile
 ): WeeklyPlan {
-  // Check for zero mileage
-  if (profile.currentWeeklyMileage <= 0) {
-    throw new FitnessProfileError("Weekly mileage must be greater than zero to generate a plan.");
-  }
-
-  // Enforce minimum run days based on weekly mileage
-  if (profile.currentWeeklyMileage >= 40 && profile.runDaysPerWeek < 5) {
-    throw new FitnessProfileError("For weekly mileage of 40 or more, at least 5 run days per week are required.");
-  }
-  if (profile.currentWeeklyMileage >= 55 && profile.runDaysPerWeek < 6) {
-    throw new FitnessProfileError("For weekly mileage of 55 or more, at least 6 run days per week are required.");
-  }
-
-  // Enforce minimum lift days if strength goal
-  if (profile.goal === "strength" && profile.liftDaysPerWeek < 3) {
-    throw new FitnessProfileError("For strength goal, at least 3 lift days per week are required.");
-  }
+  // Validate profile
+  validateProfile(profile);
 
   // Initialize empty week
   const days: DailyPlan[] = Array.from({ length: 7 }, (_, i) => ({
@@ -39,7 +24,10 @@ export function generateWeeklyPlan(
     "strength": { long: 0.15, easy: 0.75 },
   };
 
-  const ratio = GOAL_RATIOS[profile.goal] || GOAL_RATIOS["general"];
+  let ratio = GOAL_RATIOS[profile.goal] || GOAL_RATIOS["general"];
+  if (profile.runDaysPerWeek <= 3 && profile.goal !== "strength") {
+    ratio = { long: 0.40, easy: 0.60 };
+  }
   
   let longRunMiles = Math.round(profile.currentWeeklyMileage * ratio.long);
   let workoutMiles = Math.round(profile.currentWeeklyMileage * (1 - ratio.long - ratio.easy));
@@ -51,6 +39,7 @@ export function generateWeeklyPlan(
   } else if (profile.runningLevel == "advanced") { 
     workoutMiles += Math.round(adjustment); 
   }
+  workoutMiles = Math.max(0, workoutMiles);
   
   // Easy miles takes the remainder to ensure total mileage is exact
   let totalEasyMiles = profile.currentWeeklyMileage - longRunMiles - workoutMiles;
@@ -59,10 +48,12 @@ export function generateWeeklyPlan(
   let workoutDayCount: number; 
   if (profile.runDaysPerWeek >= 5) { 
     workoutDayCount = 2; 
-  } else { 
+  } else if (profile.runDaysPerWeek === 4) { 
     workoutDayCount = 1; 
+  } else {
+    workoutDayCount = 0;
   }
-  const easyDayCount = Math.max(0, profile.runDaysPerWeek - workoutDayCount - 1);
+  let easyDayCount = Math.max(0, profile.runDaysPerWeek - workoutDayCount - 1);
 
   let milesPerWorkout = workoutDayCount > 0 ? roundToNearestQuarter(workoutMiles / workoutDayCount) : 0;
   let milesPerEasy = easyDayCount > 0 ? roundToNearestQuarter(totalEasyMiles / easyDayCount) : 0;
@@ -76,7 +67,7 @@ export function generateWeeklyPlan(
       totalEasyMiles += excess * workoutDayCount;
       milesPerEasy = easyDayCount > 0 ? roundToNearestQuarter(totalEasyMiles / easyDayCount) : 0;
     }
-    if (milesPerEasy > profile.currentWeeklyMileage * 0.15) {
+    if (milesPerEasy > profile.currentWeeklyMileage * 0.15 && profile.runDaysPerWeek >= 4) {
       // Cap easy miles
       milesPerEasy = roundToNearestQuarter(profile.currentWeeklyMileage * 0.15);
     }
@@ -89,7 +80,7 @@ export function generateWeeklyPlan(
       totalEasyMiles += excess * workoutDayCount;
       milesPerEasy = easyDayCount > 0 ? roundToNearestQuarter(totalEasyMiles / easyDayCount) : 0;
     }
-    if (milesPerEasy > profile.currentWeeklyMileage * 0.18) {
+    if (milesPerEasy > profile.currentWeeklyMileage * 0.18 && profile.runDaysPerWeek >= 4) {
       // Cap easy miles
       milesPerEasy = roundToNearestQuarter(profile.currentWeeklyMileage * 0.18);
     }
@@ -102,16 +93,42 @@ export function generateWeeklyPlan(
       totalEasyMiles += excess * workoutDayCount;
       milesPerEasy = easyDayCount > 0 ? roundToNearestQuarter(totalEasyMiles / easyDayCount) : 0;
     }
-    if (milesPerEasy > profile.currentWeeklyMileage * 0.20) {
+    if (milesPerEasy > profile.currentWeeklyMileage * 0.20 && profile.runDaysPerWeek >= 4) {
       // Cap easy miles
       milesPerEasy = roundToNearestQuarter(profile.currentWeeklyMileage * 0.20);
     }
   }
 
-  // Clamp miles per easy run to be less than long run miles
-  if (milesPerEasy >= longRunMiles) {
-    milesPerEasy = roundToNearestQuarter(longRunMiles * 0.75);
-    totalEasyMiles = milesPerEasy * easyDayCount;
+  // Reconcile total mileage if rounding/caps caused a deficit
+  const assignedMileage =
+    longRunMiles +
+    milesPerWorkout * workoutDayCount +
+    milesPerEasy * easyDayCount;
+
+  let remainingMiles = roundToNearestQuarter(
+    profile.currentWeeklyMileage - assignedMileage
+  );
+
+  // Prefer adding to easy runs
+  if (remainingMiles > 0 && easyDayCount > 0) {
+    const addPerEasy = roundToNearestQuarter(remainingMiles / easyDayCount);
+    milesPerEasy += addPerEasy;
+    remainingMiles -= addPerEasy * easyDayCount;
+  }
+
+  // Last resort: add to long run
+  if (remainingMiles > 0) {
+    longRunMiles += remainingMiles;
+  }
+
+  // Enforce minimum easy run length at higher mileage
+  if (profile.currentWeeklyMileage >= 50 && easyDayCount > 0) {
+    const avgDaily = profile.currentWeeklyMileage / profile.runDaysPerWeek;
+    const minEasy = roundToNearestQuarter(avgDaily * 0.6);
+
+    if (milesPerEasy < minEasy) {
+      milesPerEasy = minEasy;
+    }
   }
 
 
@@ -120,17 +137,27 @@ export function generateWeeklyPlan(
   let remainingEasy = easyDayCount;
 
   // Place Long Run
-  days[profile.longRunDay].workouts.push({
-    type: "run",
-    runType: "long",
-    miles: roundToNearestQuarter(longRunMiles),
-  });
+  if (profile.goal !== "strength") {
+    days[profile.longRunDay].workouts.push({
+      type: "run",
+      runType: "long",
+      miles: roundToNearestQuarter(longRunMiles),
+    });
+  } else {
+    // For strength goal, assign an workout with remaining mileage
+    days[profile.longRunDay].workouts.push({
+      type: "run",
+      runType: "workout",
+      miles: roundToNearestQuarter(workoutMiles/(workoutDayCount > 0 ? workoutDayCount : 1)),
+    });
+  }
 
   // Distribute other runs
   let currentDay = (profile.longRunDay + 1) % 7;
   let lastDayWasWorkout = false;
 
-  while (currentDay !== profile.longRunDay) {
+  let safety = 0;
+  while (currentDay !== profile.longRunDay && safety < 7) {
     if (profile.runDays.includes(currentDay)) {
       const isDayAfterLong = currentDay === (profile.longRunDay + 1) % 7;
       const isDayBeforeLong = ((currentDay + 1) % 7) === profile.longRunDay;
@@ -149,66 +176,231 @@ export function generateWeeklyPlan(
         remainingWorkouts--;
         lastDayWasWorkout = true; 
       }
+    } else {
+      lastDayWasWorkout = false;
     }
     currentDay = (currentDay + 1) % 7;
+    safety++;
   }
 
 
   // 5. Assign lifts
-  const liftDays = [...profile.liftDays];
-  const totalLiftDays = profile.liftDaysPerWeek;
+  const hasLongRun = profile.goal !== "strength";
 
-  // Track what we've assigned to maintain split balance
-  let lowerDaysAssigned = 0;
-  let upperSequenceIndex = 0; 
+  let totalLiftDays = profile.liftDaysPerWeek;
 
-  for (const dayIdx of liftDays) {
-    const hasWorkoutRun = days[dayIdx].workouts.some(w => w.type === "run" && w.runType === "workout");
-    const hasLongRun = days[dayIdx].workouts.some(w => w.type === "run" && w.runType === "long");
-    
-    let assignedLift: LiftType = "full-body";
+  // Only subtract if a long run exists AND overlaps a lift day
+  const liftDaysIncludesLongRun =
+    hasLongRun && profile.liftDays.includes(profile.longRunDay);
 
-    // Priority 1: Match Lower Body with Workout Runs
-    if (hasWorkoutRun && totalLiftDays >= 4) {
-      assignedLift = "lower";
-      lowerDaysAssigned++;
-    } 
-    // Priority 2: Handle High-Frequency Splits (6 Days)
-    else if (totalLiftDays >= 6) {
-      // PPL logic but avoiding 'lower' on non-workout/long-run days if possible
-      const pplSequence: LiftType[] = ["push", "pull"]; 
-      assignedLift = pplSequence[upperSequenceIndex % pplSequence.length];
-      upperSequenceIndex++;
+  if (liftDaysIncludesLongRun) {
+    totalLiftDays -= 1;
+  }
+
+  const maxLowerDays =
+    profile.goal === "marathon" ? 2 :
+    totalLiftDays >= 4 ? Math.floor(totalLiftDays / 2) : 1;
+
+  let liftsAssigned = 0;
+  let lowerAssigned = 0;
+  let lastLiftTypeByDay: Record<number, LiftType | null> = {};
+
+  // Find all eligible lift days
+  const eligibleLiftDays = profile.liftDays
+    .filter(d => !hasLongRun || d !== profile.longRunDay)
+    .sort((a, b) => {
+      if (!hasLongRun) return a - b;
+
+      // Sort to start from day after long run
+      const aDistance = (a - profile.longRunDay + 7) % 7;
+      const bDistance = (b - profile.longRunDay + 7) % 7;
+      return aDistance - bDistance;
+    });
+
+  // PHASE 1: Assign all leg days first
+  for (const currentDay of eligibleLiftDays) {
+    if (lowerAssigned >= maxLowerDays) break;
+    if (liftsAssigned >= totalLiftDays) break;
+
+    const dayBeforeLong =
+      hasLongRun &&
+      days[(currentDay + 1) % 7]?.workouts.some(
+        w => w.type === "run" && w.runType === "long"
+      );
+
+    const dayBeforeWorkout =
+      days[(currentDay + 1) % 7]?.workouts.some(
+        w => w.type === "run" && w.runType === "workout"
+      );
+
+    const yesterdayLift = lastLiftTypeByDay[(currentDay + 6) % 7] ?? null;
+    const twoDaysAgoLift = lastLiftTypeByDay[(currentDay + 5) % 7] ?? null;
+
+    const canAssignLower =
+      !dayBeforeLong &&
+      !dayBeforeWorkout &&
+      yesterdayLift !== "legs" &&
+      twoDaysAgoLift !== "legs";
+
+    if (canAssignLower) {
+      days[currentDay].workouts.push({
+        type: "lift",
+        liftType: "legs",
+      });
+      lastLiftTypeByDay[currentDay] = "legs";
+      lowerAssigned++;
+      liftsAssigned++;
     }
-    // Priority 3: Handle Standard Splits (4-5 Days)
-    else if (totalLiftDays >= 4) {
-      // If we haven't assigned enough lower body days yet (usually 2 for a 4-day split)
-      const needsLower = lowerDaysAssigned < Math.floor(totalLiftDays / 2);
-      
-      if (needsLower && !hasLongRun) {
-        assignedLift = "lower";
-        lowerDaysAssigned++;
-      } else {
-        assignedLift = "upper";
-      }
-    }
-    // Priority 4: Low Frequency
-    else {
-      assignedLift = "full-body";
+  }
+
+  // PHASE 2: Assign push/pull for remaining days
+  const upperRotation: LiftType[] = ["push", "pull"];
+  let upperIndex = 0;
+
+  for (const currentDay of eligibleLiftDays) {
+    if (liftsAssigned >= totalLiftDays) break;
+
+    // Skip if this day already has a lift
+    if (lastLiftTypeByDay[currentDay]) continue;
+
+    const yesterdayLift = lastLiftTypeByDay[(currentDay + 6) % 7] ?? null;
+
+    const candidate = upperRotation[upperIndex % upperRotation.length];
+    let assignedLift: LiftType;
+
+    // Avoid back-to-back same lift type
+    if (candidate === yesterdayLift) {
+      assignedLift = upperRotation[(upperIndex + 1) % upperRotation.length];
+      upperIndex += 2;
+    } else {
+      assignedLift = candidate;
+      upperIndex++;
     }
 
-    // Safety check: Avoid lower body lifts on long run days
-    if (assignedLift === "lower" && hasLongRun) {
-      assignedLift = "upper";
-    }
-
-    days[dayIdx].workouts.push({
+    days[currentDay].workouts.push({
       type: "lift",
       liftType: assignedLift,
+    });
+    lastLiftTypeByDay[currentDay] = assignedLift;
+    liftsAssigned++;
+  }
+
+  // PHASE 3: Convert push/pull to upper if imbalanced
+  const pushCount = days.reduce(
+    (sum, d) =>
+      sum + d.workouts.filter(w => w.type === "lift" && w.liftType === "push").length,
+    0
+  );
+
+  const pullCount = days.reduce(
+    (sum, d) =>
+      sum + d.workouts.filter(w => w.type === "lift" && w.liftType === "pull").length,
+    0
+  );
+
+  // Convert to upper if one side is missing entirely
+  if (pushCount === 0 && pullCount > 0) {
+    days.forEach(d => {
+      d.workouts = d.workouts.map(w =>
+        w.type === "lift" && w.liftType === "pull"
+          ? { type: "lift", liftType: "upper" }
+          : w
+      );
+    });
+  } else if (pullCount === 0 && pushCount > 0) {
+    days.forEach(d => {
+      d.workouts = d.workouts.map(w =>
+        w.type === "lift" && w.liftType === "push"
+          ? { type: "lift", liftType: "upper" }
+          : w
+      );
     });
   }
 
   return { days };
+}
+
+function validateProfile(profile: FitnessProfile): void {
+  // Validate day arrays
+  validateDayArray(profile.runDays, "Run days");
+  validateDayArray(profile.liftDays, "Lift days");
+
+  // Check for zero mileage
+  if (profile.currentWeeklyMileage <= 0) {
+    throw new FitnessProfileError("Weekly mileage must be greater than zero to generate a plan.");
+  }
+
+  // Enforce minimum run days based on goal
+  if (profile.goal !== "strength" && profile.runDaysPerWeek < 3) {
+    throw new FitnessProfileError("For running-focused goals, at least 3 run days per week are required.");
+  }
+
+  // Enforce minimum run days based on weekly mileage
+  if (profile.currentWeeklyMileage >= 40 && profile.runDaysPerWeek < 5) {
+    throw new FitnessProfileError("For weekly mileage of 40 or more, at least 5 run days per week are required.");
+  }
+  if (profile.currentWeeklyMileage >= 55 && profile.runDaysPerWeek < 6) {
+    throw new FitnessProfileError("For weekly mileage of 55 or more, at least 6 run days per week are required.");
+  }
+
+  // Enforce minimum lift days if strength goal
+  if (profile.goal === "strength" && profile.liftDaysPerWeek < 3) {
+    throw new FitnessProfileError("For strength goal, at least 3 lift days per week are required.");
+  }
+
+  // Enforce maximum lift days based on goal
+  if (profile.goal != "strength" && profile.goal != "general" && profile.liftDaysPerWeek > 4) {
+    throw new FitnessProfileError("For running-focused goals, no more than 4 lift days per week are allowed.");
+  }
+  if (profile.goal == "half-marathon" || profile.goal == "marathon") {
+    if (profile.currentWeeklyMileage >= 50 && profile.liftDaysPerWeek > 3) {
+      throw new FitnessProfileError("For half-marathon/marathon goals with weekly mileage of 50 or more, no more than 3 lift days per week are allowed.");
+    }
+    if (profile.currentWeeklyMileage >= 65 && profile.liftDaysPerWeek > 2) {
+      throw new FitnessProfileError("For half-marathon/marathon goals with weekly mileage of 65 or more, no more than 2 lift days per week are allowed.");
+    }
+  }
+
+  // Enforce maximum run days and maximum lift days to be less than 7
+  if (profile.runDaysPerWeek > 6) {
+    throw new FitnessProfileError("Total of run days per week cannot exceed 6.");
+  }
+  if (profile.liftDaysPerWeek > 6) {
+    throw new FitnessProfileError("Total of lift days per week cannot exceed 6.");
+  }
+
+  // Don't allow lift on long run day for running-focused goals
+  if (profile.goal !== "strength" && profile.goal !== "general" && profile.liftDays.includes(profile.longRunDay)) {
+    throw new FitnessProfileError("Lift days cannot include the long run day for running-focused goals.");
+  }
+
+  // Validate that long run day is within run days for non-strength goals
+  if (profile.goal !== "strength" && !profile.runDays.includes(profile.longRunDay)) {
+    throw new FitnessProfileError("Long run day must be one of the selected run days.");
+  }
+
+  // Validate that number of selected run days matches runDaysPerWeek
+  if (profile.runDays.length !== profile.runDaysPerWeek) {
+    throw new FitnessProfileError("Number of selected run days does not match run days per week.");
+  }
+
+  // Validate that number of selected lift days matches liftDaysPerWeek
+  if (profile.liftDays.length !== profile.liftDaysPerWeek) {
+    throw new FitnessProfileError("Number of selected lift days does not match lift days per week.");
+  }
+}
+
+function validateDayArray(days: number[], label: string): void {
+  // Check for duplicates and valid range
+  const unique = new Set(days);
+  if (unique.size !== days.length) {
+    throw new FitnessProfileError(`${label} must not contain duplicate days.`);
+  }
+  for (const d of days) {
+    if (d < 0 || d > 6) {
+      throw new FitnessProfileError(`${label} must contain values between 0 and 6.`);
+    }
+  }
 }
 
 function roundToNearestQuarter(num: number): number {

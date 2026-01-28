@@ -12,7 +12,7 @@ export default function App() {
     liftingExperience: "beginner",
     runDaysPerWeek: 3,
     liftDaysPerWeek: 3,
-    longRunDay: 0, // Will be updated by useEffect
+    longRunDay: 0,
     runDays: [] as number[],
     liftDays: [] as number[],
     goal: "general",
@@ -21,10 +21,9 @@ export default function App() {
   const [response, setResponse] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // VALIDATION: Ensure Long Run Day is actually a Run Day
+  // Ensure Long Run Day is valid
   useEffect(() => {
     if (profile.runDays.length > 0 && !profile.runDays.includes(profile.longRunDay)) {
-      // Auto-set Long Run Day to the first available run day if current choice is invalid
       setProfile(prev => ({ ...prev, longRunDay: prev.runDays[0] }));
     }
   }, [profile.runDays, profile.longRunDay]);
@@ -60,19 +59,31 @@ export default function App() {
     }
   }
 
+  // Map run types to colors
+  const runColors: Record<string, string> = {
+    long: "#2ecc71",
+    workout: "#e74c3c",
+    easy: "#f1c40f",
+  };
+
+  const liftColors: Record<string, string> = {
+    "push": "#3498db",
+    "pull": "#9b59b6",
+    "legs": "#e67e22",
+    "full-body": "#1abc9c",
+  };
+
   return (
-    <div style={{ padding: "40px", fontFamily: "system-ui, sans-serif", maxWidth: "900px", margin: "0 auto" }}>
+    <div style={{ padding: "40px", fontFamily: "system-ui, sans-serif", maxWidth: "1000px", margin: "0 auto" }}>
       <h1 style={{ borderBottom: "2px solid #eee", paddingBottom: "10px" }}>Hybrid Planner Tester</h1>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "30px", marginTop: "20px" }}>
-        
-        {/* Left Column: Basic Stats & Goal */}
+        {/* Profile & Goals */}
         <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
           <h3>Profile & Goals</h3>
-          
           <label>Age</label>
-          <input type="number" value={profile.age} onChange={e => setProfile({...profile, age: +e.target.value})} />
-
+          <input type="number" value={profile.age} min={10} max={100} 
+                 onChange={e => setProfile({...profile, age: +e.target.value})} />
           <label>Goal</label>
           <select value={profile.goal} onChange={e => setProfile({...profile, goal: e.target.value as any})}>
             <option value="general">General Fitness</option>
@@ -82,11 +93,9 @@ export default function App() {
             <option value="marathon">Marathon</option>
             <option value="strength">Strength Focus</option>
           </select>
-
           <label>Weekly Mileage: <strong>{profile.currentWeeklyMileage} mi</strong></label>
           <input type="range" min="0" max="100" value={profile.currentWeeklyMileage} 
                  onChange={e => setProfile({...profile, currentWeeklyMileage: +e.target.value})} />
-
           <label>Running Experience</label>
           <select value={profile.runningLevel} onChange={e => setProfile({...profile, runningLevel: e.target.value as any})}>
             <option value="beginner">Beginner</option>
@@ -95,23 +104,20 @@ export default function App() {
           </select>
         </div>
 
-        {/* Right Column: Schedule Selection */}
-        <div style={{ background: "#878787", padding: "20px", borderRadius: "12px" }}>
-          <h3>Schedule Logic</h3>
-
-          {/* Running Section */}
+        {/* Schedule Selection */}
+        <div style={{ background: "#f5f5f5", padding: "20px", borderRadius: "12px" }}>
+          <h3>Schedule</h3>
           <div style={{ marginBottom: "20px" }}>
             <label>Run Days Per Week: <strong>{profile.runDaysPerWeek}</strong></label>
             <input type="number" min="1" max="7" value={profile.runDaysPerWeek} 
-                   onChange={e => setProfile({...profile, runDaysPerWeek: +e.target.value})} style={{ display: "block", marginBottom: "10px" }} />
-            
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "5px" }}>
+                   onChange={e => setProfile({...profile, runDaysPerWeek: +e.target.value})} />
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "5px", marginTop: "10px" }}>
               {DAYS.map((name, i) => (
                 <button 
                   key={`run-${i}`}
                   onClick={() => toggleDay(i, "runDays")}
                   style={{ 
-                    padding: "8px", borderRadius: "4px", border: "1px solid #ccc", cursor: "pointer",
+                    padding: "8px 12px", borderRadius: "6px", border: "1px solid #ccc", cursor: "pointer",
                     backgroundColor: profile.runDays.includes(i) ? "#2ecc71" : "#fff",
                     color: profile.runDays.includes(i) ? "#fff" : "#000"
                   }}
@@ -119,17 +125,15 @@ export default function App() {
               ))}
             </div>
           </div>
-
-          {/* Long Run Selection - Filtered to only allow picked run days */}
-          <div style={{ marginBottom: "20px", padding: "10px", background: "#fff", border: "1px dashed #ccc", borderRadius: "8px" }}>
-            <label style={{ fontWeight: "bold" }}>Assign Long Run Day:</label>
+          <div style={{ marginBottom: "20px", padding: "10px", background: "#e0e0e0", borderRadius: "8px" }}>
+            <label style={{ fontWeight: "bold" }}>Long Run Day</label>
             {profile.runDays.length === 0 ? (
-              <p style={{ fontSize: "12px", color: "red" }}>Select your run days above first.</p>
+              <p style={{ fontSize: "12px", color: "red" }}>Select run days first</p>
             ) : (
               <select 
-                style={{ display: "block", width: "100%", padding: "8px", marginTop: "5px" }}
                 value={profile.longRunDay} 
                 onChange={e => setProfile({...profile, longRunDay: +e.target.value})}
+                style={{ display: "block", width: "100%", padding: "8px", marginTop: "5px" }}
               >
                 {profile.runDays.map(dayIdx => (
                   <option key={dayIdx} value={dayIdx}>{DAYS[dayIdx]}</option>
@@ -137,20 +141,17 @@ export default function App() {
               </select>
             )}
           </div>
-
-          {/* Lifting Section */}
-          <div style={{ marginBottom: "10px" }}>
+          <div>
             <label>Lift Days Per Week: <strong>{profile.liftDaysPerWeek}</strong></label>
             <input type="number" min="0" max="7" value={profile.liftDaysPerWeek} 
-                   onChange={e => setProfile({...profile, liftDaysPerWeek: +e.target.value})} style={{ display: "block", marginBottom: "10px" }} />
-            
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "5px" }}>
+                   onChange={e => setProfile({...profile, liftDaysPerWeek: +e.target.value})} />
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "5px", marginTop: "10px" }}>
               {DAYS.map((name, i) => (
                 <button 
                   key={`lift-${i}`}
                   onClick={() => toggleDay(i, "liftDays")}
                   style={{ 
-                    padding: "8px", borderRadius: "4px", border: "1px solid #ccc", cursor: "pointer",
+                    padding: "8px 12px", borderRadius: "6px", border: "1px solid #ccc", cursor: "pointer",
                     backgroundColor: profile.liftDays.includes(i) ? "#3498db" : "#fff",
                     color: profile.liftDays.includes(i) ? "#fff" : "#000"
                   }}
@@ -161,6 +162,7 @@ export default function App() {
         </div>
       </div>
 
+      {/* Generate Button */}
       <div style={{ marginTop: "30px", textAlign: "center" }}>
         {isInvalid && (
           <p style={{ color: "#e67e22", fontSize: "14px", marginBottom: "10px" }}>
@@ -180,12 +182,44 @@ export default function App() {
         </button>
       </div>
 
+      {/* Output JSON */}
       {response && (
         <div style={{ marginTop: "40px" }}>
-          <h2 style={{ borderBottom: "2px solid #333" }}>Generated Output</h2>
+          <h2 style={{ borderBottom: "2px solid #333" }}>Generated Plan</h2>
           <div style={{ background: "#1e1e1e", color: "#61dafb", padding: "20px", borderRadius: "12px", overflowX: "auto" }}>
             <pre style={{ margin: 0 }}>{JSON.stringify(response, null, 2)}</pre>
           </div>
+
+          {/* Calendar View */}
+          <div style={{ marginTop: "30px" }}>
+            <h3 style={{ marginBottom: "10px" }}>Weekly Calendar</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "5px" }}>
+              {response.days.map((day: any, i: number) => (
+                <div key={i} style={{ border: "1px solid #ccc", borderRadius: "8px", minHeight: "80px", padding: "5px" }}>
+                  <strong>{DAYS[i]}</strong>
+                  {day.workouts.map((w: any, idx: number) => (
+                    <div key={idx} style={{ 
+                      backgroundColor: w.type === "run" ? runColors[w.runType] : liftColors[w.liftType],
+                      color: "#fff",
+                      fontSize: "12px",
+                      borderRadius: "4px",
+                      padding: "2px 4px",
+                      marginTop: "4px",
+                      textAlign: "center"
+                    }}>
+                      {w.type === "run" ? `${w.runType} ${w.miles}mi` : w.liftType}
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div style={{ marginTop: "20px", color: "red" }}>
+          <p>Error: {error}</p>
         </div>
       )}
     </div>

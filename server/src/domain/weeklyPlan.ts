@@ -1,5 +1,5 @@
 export type RunType = "easy" | "workout" | "long";
-export type LiftType = "full-body" | "upper" | "lower" | "push" | "pull";
+export type LiftType = "push" | "pull" | "legs" | "full-body" | "upper";
 
 export interface RunWorkout {
   type: "run";
