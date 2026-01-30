@@ -12,7 +12,7 @@ export const FitnessProfileSchema = z.object({
 
   liftingExperience: z.enum(["beginner", "intermediate", "advanced"]),
 
-  runDaysPerWeek: z.number().int().min(1).max(6),
+  runDaysPerWeek: z.number().int().min(0).max(6),
 
   liftDaysPerWeek: z.number().int().min(0).max(6),
 
