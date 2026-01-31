@@ -447,7 +447,7 @@ function roundToNearestQuarter(num: number): number {
   return Math.round(num * 4) / 4;
 }
 
-class FitnessProfileError extends Error {
+export class FitnessProfileError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "FitnessProfileError";

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 
 const API_URL = "http://localhost:3001/plan";
+const MARATHON_API_URL = "http://localhost:3001/marathon-plan";
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default function App() {
@@ -31,8 +32,10 @@ export default function App() {
   });
 
   const [response, setResponse] = useState<any>(null);
+  const [marathonResponse, setMarathonResponse] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [marathonWeeks, setMarathonWeeks] = useState(16);
 
   // Ensure Long Run Day is valid
   useEffect(() => {
@@ -90,6 +93,31 @@ export default function App() {
       }
       const data = await res.json();
       setResponse(data);
+      setMarathonResponse(null);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function generateMarathonPlan() {
+    if (isInvalid) return;
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch(MARATHON_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profile, numWeeks: marathonWeeks }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP Error: ${res.status}`);
+      }
+      const data = await res.json();
+      setMarathonResponse(data);
+      setResponse(null);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -532,38 +560,102 @@ export default function App() {
                `⚠️ Day selection mismatch: ${profile.runDays.length}/${profile.runDaysPerWeek} runs, ${profile.liftDays.length}/${profile.liftDaysPerWeek} lifts`}
             </p>
           )}
-          <button 
-            disabled={isInvalid || loading}
-            onClick={generatePlan} 
-            style={{ 
-              padding: "16px 48px",
-              fontSize: "16px",
-              fontWeight: 700,
+          
+          <div style={{ display: "flex", gap: "16px", justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
+            <button 
+              disabled={isInvalid || loading}
+              onClick={generatePlan} 
+              style={{ 
+                padding: "16px 48px",
+                fontSize: "16px",
+                fontWeight: 700,
+                borderRadius: "12px",
+                border: "none",
+                cursor: isInvalid || loading ? "not-allowed" : "pointer", 
+                background: isInvalid || loading ? "rgba(255, 255, 255, 0.1)" : "linear-gradient(135deg, #3b82f6, #8b5cf6)",
+                color: isInvalid || loading ? "rgba(255, 255, 255, 0.3)" : "#fff",
+                transition: "all 0.3s",
+                textTransform: "uppercase",
+                letterSpacing: "1px",
+                boxShadow: isInvalid || loading ? "none" : "0 8px 24px rgba(59, 130, 246, 0.4)"
+              }}
+              onMouseOver={(e) => {
+                if (!isInvalid && !loading) {
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.boxShadow = "0 12px 32px rgba(59, 130, 246, 0.5)";
+                }
+              }}
+              onMouseOut={(e) => {
+                if (!isInvalid && !loading) {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "0 8px 24px rgba(59, 130, 246, 0.4)";
+                }
+              }}
+            >
+              {loading ? "Generating..." : "Generate Weekly Plan"}
+            </button>
+
+            <div style={{ 
+              display: "flex", 
+              alignItems: "center", 
+              gap: "12px",
+              background: "rgba(255, 255, 255, 0.05)",
+              padding: "12px 20px",
               borderRadius: "12px",
-              border: "none",
-              cursor: isInvalid || loading ? "not-allowed" : "pointer", 
-              background: isInvalid || loading ? "rgba(255, 255, 255, 0.1)" : "linear-gradient(135deg, #3b82f6, #8b5cf6)",
-              color: isInvalid || loading ? "rgba(255, 255, 255, 0.3)" : "#fff",
-              transition: "all 0.3s",
-              textTransform: "uppercase",
-              letterSpacing: "1px",
-              boxShadow: isInvalid || loading ? "none" : "0 8px 24px rgba(59, 130, 246, 0.4)"
-            }}
-            onMouseOver={(e) => {
-              if (!isInvalid && !loading) {
-                e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 12px 32px rgba(59, 130, 246, 0.5)";
-              }
-            }}
-            onMouseOut={(e) => {
-              if (!isInvalid && !loading) {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 8px 24px rgba(59, 130, 246, 0.4)";
-              }
-            }}
-          >
-            {loading ? "Generating..." : "Generate Plan"}
-          </button>
+              border: "1px solid rgba(255, 255, 255, 0.1)"
+            }}>
+              <label style={{ 
+                color: "rgba(255, 255, 255, 0.7)", 
+                fontSize: "13px", 
+                fontWeight: 600,
+                whiteSpace: "nowrap"
+              }}>
+                Marathon Plan:
+              </label>
+              <select 
+                value={marathonWeeks} 
+                onChange={e => setMarathonWeeks(+e.target.value)}
+                style={{ 
+                  width: "80px",
+                  padding: "8px 10px",
+                  fontSize: "14px"
+                }}
+              >
+                {[8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].map(w => (
+                  <option key={w} value={w}>{w} weeks</option>
+                ))}
+              </select>
+              <button 
+                disabled={isInvalid || loading}
+                onClick={generateMarathonPlan}
+                style={{ 
+                  padding: "8px 24px",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  borderRadius: "8px",
+                  border: "none",
+                  cursor: isInvalid || loading ? "not-allowed" : "pointer", 
+                  background: isInvalid || loading ? "rgba(255, 255, 255, 0.1)" : "linear-gradient(135deg, #10b981, #059669)",
+                  color: isInvalid || loading ? "rgba(255, 255, 255, 0.3)" : "#fff",
+                  transition: "all 0.3s",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px"
+                }}
+                onMouseOver={(e) => {
+                  if (!isInvalid && !loading) {
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (!isInvalid && !loading) {
+                    e.currentTarget.style.transform = "translateY(0)";
+                  }
+                }}
+              >
+                Generate
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Error Display */}
@@ -741,6 +833,181 @@ export default function App() {
                   Active Days
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Marathon Plan Display */}
+        {marathonResponse && (
+          <div style={{ animation: "fadeIn 0.6s ease-out" }}>
+            <h2 style={{ 
+              color: "#fff", 
+              fontSize: "32px",
+              fontFamily: "'Bebas Neue', sans-serif",
+              letterSpacing: "1px",
+              marginBottom: "16px",
+              textAlign: "center"
+            }}>
+              {marathonWeeks}-WEEK MARATHON PLAN
+            </h2>
+            <p style={{ 
+              color: "rgba(255, 255, 255, 0.6)",
+              textAlign: "center",
+              marginBottom: "32px",
+              fontSize: "14px"
+            }}>
+              Progressive training plan from {marathonResponse[0].days.reduce((sum: number, d: any) => 
+                sum + d.workouts.filter((w: any) => w.type === "run").reduce((s: number, w: any) => s + w.miles, 0)
+              , 0).toFixed(1)} to peak {Math.max(...marathonResponse.map((week: any) => 
+                week.days.reduce((sum: number, d: any) => 
+                  sum + d.workouts.filter((w: any) => w.type === "run").reduce((s: number, w: any) => s + w.miles, 0)
+                , 0)
+              )).toFixed(1)} miles/week
+            </p>
+
+            {/* Week-by-week cards */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+              {marathonResponse.map((week: any, weekIdx: number) => {
+                const totalMiles = week.days.reduce((sum: number, d: any) => 
+                  sum + d.workouts.filter((w: any) => w.type === "run").reduce((s: number, w: any) => s + w.miles, 0)
+                , 0);
+                
+                const weekType = 
+                  weekIdx >= marathonWeeks - 2 ? "Taper" :
+                  totalMiles < marathonResponse[Math.max(0, weekIdx - 1)]?.days.reduce((sum: number, d: any) => 
+                    sum + d.workouts.filter((w: any) => w.type === "run").reduce((s: number, w: any) => s + w.miles, 0)
+                  , 0) * 0.9 ? "Deload" :
+                  "Build";
+
+                const weekColor = 
+                  weekType === "Taper" ? "#f59e0b" :
+                  weekType === "Deload" ? "#3b82f6" :
+                  "#10b981";
+
+                return (
+                  <div 
+                    key={weekIdx}
+                    style={{ 
+                      background: "rgba(255, 255, 255, 0.05)",
+                      border: "1px solid rgba(255, 255, 255, 0.1)",
+                      borderRadius: "16px",
+                      padding: "20px",
+                      transition: "all 0.3s"
+                    }}
+                  >
+                    <div style={{ 
+                      display: "flex", 
+                      justifyContent: "space-between", 
+                      alignItems: "center",
+                      marginBottom: "16px",
+                      flexWrap: "wrap",
+                      gap: "12px"
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        <h3 style={{ 
+                          color: "#fff",
+                          margin: 0,
+                          fontFamily: "'Bebas Neue', sans-serif",
+                          fontSize: "24px",
+                          letterSpacing: "1px"
+                        }}>
+                          WEEK {weekIdx + 1}
+                        </h3>
+                        <span style={{
+                          background: weekColor,
+                          color: "#fff",
+                          padding: "4px 12px",
+                          borderRadius: "12px",
+                          fontSize: "11px",
+                          fontWeight: 600,
+                          textTransform: "uppercase"
+                        }}>
+                          {weekType}
+                        </span>
+                      </div>
+                      <div style={{ 
+                        color: "#10b981",
+                        fontWeight: 700,
+                        fontSize: "18px",
+                        fontFamily: "'Bebas Neue', sans-serif"
+                      }}>
+                        {totalMiles.toFixed(1)} MILES
+                      </div>
+                    </div>
+
+                    <div style={{ 
+                      display: "grid", 
+                      gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))", 
+                      gap: "8px"
+                    }}>
+                      {week.days.map((day: any, i: number) => (
+                        <div 
+                          key={i} 
+                          style={{ 
+                            background: day.workouts.length > 0 
+                              ? "rgba(255, 255, 255, 0.08)"
+                              : "rgba(255, 255, 255, 0.02)",
+                            border: "1px solid rgba(255, 255, 255, 0.1)",
+                            borderRadius: "8px",
+                            padding: "10px",
+                            minHeight: "80px"
+                          }}
+                        >
+                          <div style={{ 
+                            fontSize: "10px", 
+                            fontWeight: 700,
+                            color: "rgba(255, 255, 255, 0.5)",
+                            marginBottom: "6px",
+                            textTransform: "uppercase"
+                          }}>
+                            {DAYS[i]}
+                          </div>
+                          {day.workouts.length === 0 ? (
+                            <div style={{ 
+                              color: "rgba(255, 255, 255, 0.2)",
+                              fontSize: "10px",
+                              fontStyle: "italic"
+                            }}>
+                              Rest
+                            </div>
+                          ) : (
+                            day.workouts.map((w: any, idx: number) => (
+                              <div 
+                                key={idx} 
+                                style={{ 
+                                  background: w.type === "run" ? runColors[w.runType] : liftColors[w.liftType],
+                                  color: "#fff",
+                                  fontSize: "11px",
+                                  fontWeight: 600,
+                                  borderRadius: "4px",
+                                  padding: "6px",
+                                  marginTop: idx > 0 ? "4px" : "0",
+                                  textAlign: "center"
+                                }}
+                              >
+                                {w.type === "run" ? (
+                                  <>
+                                    <div style={{ fontSize: "9px", opacity: 0.8 }}>
+                                      {w.runType}
+                                    </div>
+                                    <div style={{ fontSize: "13px", fontWeight: 700 }}>
+                                      {w.miles}
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div style={{ textTransform: "capitalize", fontSize: "10px" }}>
+                                    {w.liftType}
+                                  </div>
+                                )}
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
