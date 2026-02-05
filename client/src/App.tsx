@@ -9,6 +9,7 @@ export default function App() {
     age: number;
     sex: string;
     runningLevel: string;
+    startingWeeklyMileage: number;
     currentWeeklyMileage: number;
     liftingExperience: string;
     runDaysPerWeek: number;
@@ -17,10 +18,12 @@ export default function App() {
     runDays: number[];
     liftDays: number[];
     goal: string;
+    trainingLengthWeeks: number;
   }>({
     age: 25,
     sex: "male",
     runningLevel: "beginner",
+    startingWeeklyMileage: 20,
     currentWeeklyMileage: 20,
     liftingExperience: "beginner",
     runDaysPerWeek: 3,
@@ -29,6 +32,7 @@ export default function App() {
     runDays: [] as number[],
     liftDays: [] as number[],
     goal: "general",
+    trainingLengthWeeks: 16,
   });
 
   const [response, setResponse] = useState<any>(null);
@@ -102,28 +106,36 @@ export default function App() {
   }
 
   async function generateMarathonPlan() {
-    if (isInvalid) return;
-    setError(null);
-    setLoading(true);
-    try {
-      const res = await fetch(MARATHON_API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profile, numWeeks: marathonWeeks }),
-      });
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP Error: ${res.status}`);
-      }
-      const data = await res.json();
-      setMarathonResponse(data);
-      setResponse(null);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+  if (isInvalid) return;
+  setError(null);
+  setLoading(true);
+  try {
+    const res = await fetch(MARATHON_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      // FIX: Send just the profile, not wrapped in an object
+      body: JSON.stringify({
+        ...profile,
+        trainingLengthWeeks: marathonWeeks,
+        goal: "marathon", // Force goal to marathon
+      }),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP Error: ${res.status}`);
     }
+
+    const data = await res.json();
+    setMarathonResponse(data);
+    setResponse(null);
+  } catch (err: any) {
+    setError(err.message);
+  } finally {
+    setLoading(false);
   }
+}
+
 
   // Map run types to colors
   const runColors: Record<string, string> = {
@@ -375,14 +387,14 @@ export default function App() {
                       fontWeight: 500 
                     }}>
                       <span>Weekly Mileage</span>
-                      <span style={{ color: "#3b82f6", fontWeight: 700 }}>{profile.currentWeeklyMileage} mi</span>
+                      <span style={{ color: "#3b82f6", fontWeight: 700 }}>{profile.startingWeeklyMileage} mi</span>
                     </label>
                     <input 
                       type="range" 
                       min="0" 
-                      max="100" 
-                      value={profile.currentWeeklyMileage} 
-                      onChange={e => setProfile({...profile, currentWeeklyMileage: +e.target.value})} 
+                      max="40" 
+                      value={profile.startingWeeklyMileage} 
+                      onChange={e => setProfile({...profile, startingWeeklyMileage: +e.target.value})} 
                     />
                   </div>
 
@@ -621,7 +633,7 @@ export default function App() {
                   fontSize: "14px"
                 }}
               >
-                {[8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].map(w => (
+                {[12, 13, 14, 15, 16, 17, 18, 19, 20].map(w => (
                   <option key={w} value={w}>{w} weeks</option>
                 ))}
               </select>

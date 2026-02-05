@@ -41,7 +41,7 @@ function assignRunWorkouts(days: DailyPlan[], profile: FitnessProfile): void {
     "5k": { long: 0.25, easy: 0.50 },
     "10k": { long: 0.30, easy: 0.55 },
     "half-marathon": { long: 0.30, easy: 0.55 },
-    "marathon": { long: 0.30, easy: 0.60 },
+    "marathon": { long: 0.40, easy: 0.40 },
     "strength": { long: 0.15, easy: 0.75 },
   };
 
@@ -49,8 +49,85 @@ function assignRunWorkouts(days: DailyPlan[], profile: FitnessProfile): void {
   if (profile.runDaysPerWeek <= 3 && profile.goal !== "strength") {
     ratio = { long: 0.40, easy: 0.60 };
   }
+
+  if (profile.goal === "marathon") {
+    if (profile.startingWeeklyMileage < 20) {
+      ratio.long = 0.40;
+      ratio.easy = 0.40;
+    } else if (profile.startingWeeklyMileage < 30) {
+      ratio.long = 0.30;
+      ratio.easy = 0.50;
+      if (profile.trainingLengthWeeks < 16) {
+        ratio.long = 0.35;
+        ratio.easy = 0.45;
+      }
+    } else {
+      ratio.long = 0.20;
+      ratio.easy = 0.60;
+    }
+  }
+
+  // Use pre-calculated long run if provided 
+  let longRunMiles: number;
   
-  let longRunMiles = Math.round(profile.currentWeeklyMileage * ratio.long);
+  if (profile.longRunLength !== undefined) {
+    // Marathon plan has pre-calculated the exact long run distance
+    longRunMiles = profile.longRunLength;
+
+    // Race week check
+    if (longRunMiles === 0 && profile.weeksUntilRace === 1) {
+      
+      // All miles this week should be easy runs (no hard workouts in race week)
+      const easyDayCount = profile.runDaysPerWeek;
+      const milesPerEasy = roundToNearestQuarter(profile.currentWeeklyMileage / easyDayCount);
+      
+      // Distribute easy runs across all run days
+      for (const day of profile.runDays) {
+        days[day].workouts.push({
+          type: "run",
+          runType: "easy",
+          miles: milesPerEasy
+        });
+      }
+      
+      return;
+    }
+  } else {
+    // Calculate from ratio (for non-marathon or single-week plans)
+    longRunMiles = profile.currentWeeklyMileage * ratio.long;
+    
+    // Apply marathon minimums if applicable
+    if (profile.goal === "marathon" && profile.weeksUntilRace !== undefined) {
+      if (profile.weeksUntilRace === 3) {
+        longRunMiles = Math.max(longRunMiles, 20);
+      } else if (profile.weeksUntilRace === 4) {
+        longRunMiles = Math.max(longRunMiles, 18);
+      } else if (profile.weeksUntilRace >= 5 && profile.weeksUntilRace <= 8) {
+        const minLong = 14 + (8 - profile.weeksUntilRace);
+        longRunMiles = Math.max(longRunMiles, minLong);
+      } else if (profile.weeksUntilRace >= 9 && profile.weeksUntilRace <= 12) {
+        const minLong = 10 + (12 - profile.weeksUntilRace);
+        longRunMiles = Math.max(longRunMiles, minLong);
+      }
+      
+      // Cap at 20 miles
+      longRunMiles = Math.min(longRunMiles, 20);
+    }
+    
+    // On build weeks, enforce minimum 1-mile increase from previous peak
+    if (profile.weekType === "B" && profile.peakLongRunLength !== undefined) {
+      longRunMiles = Math.max(longRunMiles, profile.peakLongRunLength + 1);
+    }
+  }
+  
+  // Round after ensuring minimum increase
+  longRunMiles = Math.round(longRunMiles);
+
+  // Update peak long run length only on build weeks
+  if (profile.weekType === "B") {
+    profile.peakLongRunLength = Math.max(profile.peakLongRunLength || 0, longRunMiles);
+  }
+
   let workoutMiles = Math.round(profile.currentWeeklyMileage * (1 - ratio.long - ratio.easy));
 
   // Adjust for level
@@ -80,7 +157,7 @@ function assignRunWorkouts(days: DailyPlan[], profile: FitnessProfile): void {
   let milesPerEasy = easyDayCount > 0 ? roundToNearestQuarter(totalEasyMiles / easyDayCount) : 0;
 
   // 3. Cap workout and easy miles to avoid over-assignment
-  if (profile.runningLevel == "beginner" || profile.goal == "general" || profile.goal == "strength") {
+  if (profile.goal == "general" || profile.goal == "strength") {
     if (milesPerWorkout > profile.currentWeeklyMileage * 0.15) {
       // Cap workout miles and reassign excess to easy runs
       const excess = milesPerWorkout - roundToNearestQuarter(profile.currentWeeklyMileage * 0.15);
@@ -118,28 +195,6 @@ function assignRunWorkouts(days: DailyPlan[], profile: FitnessProfile): void {
       // Cap easy miles
       milesPerEasy = roundToNearestQuarter(profile.currentWeeklyMileage * 0.20);
     }
-  }
-
-  // Reconcile total mileage if rounding/caps caused a deficit
-  const assignedMileage =
-    longRunMiles +
-    milesPerWorkout * workoutDayCount +
-    milesPerEasy * easyDayCount;
-
-  let remainingMiles = roundToNearestQuarter(
-    profile.currentWeeklyMileage - assignedMileage
-  );
-
-  // Prefer adding to easy runs
-  if (remainingMiles > 0 && easyDayCount > 0) {
-    const addPerEasy = roundToNearestQuarter(remainingMiles / easyDayCount);
-    milesPerEasy += addPerEasy;
-    remainingMiles -= addPerEasy * easyDayCount;
-  }
-
-  // Last resort: add to long run
-  if (remainingMiles > 0) {
-    longRunMiles += remainingMiles;
   }
 
   // Enforce minimum easy run length at higher mileage
@@ -364,16 +419,19 @@ function validateProfile(profile: FitnessProfile): void {
     }
 
     // Enforce minimum run days based on goal
+    if ((profile.goal === "marathon" || profile.goal === "half-marathon") && profile.runDaysPerWeek < 4) {
+      throw new FitnessProfileError("For marathon or half-marathon goal, at least 4 run days per week are required.");
+    }
     if (profile.goal !== "strength" && profile.runDaysPerWeek < 3) {
       throw new FitnessProfileError("For running-focused goals, at least 3 run days per week are required.");
     }
 
     // Enforce minimum run days based on weekly mileage
-    if (profile.currentWeeklyMileage >= 40 && profile.runDaysPerWeek < 5) {
-      throw new FitnessProfileError("For weekly mileage of 40 or more, at least 5 run days per week are required.");
+    if (profile.currentWeeklyMileage >= 50 && profile.runDaysPerWeek < 5) {
+      throw new FitnessProfileError("For weekly mileage of 50 or more, at least 5 run days per week are required.");
     }
-    if (profile.currentWeeklyMileage >= 55 && profile.runDaysPerWeek < 6) {
-      throw new FitnessProfileError("For weekly mileage of 55 or more, at least 6 run days per week are required.");
+    if (profile.currentWeeklyMileage >= 65 && profile.runDaysPerWeek < 6) {
+      throw new FitnessProfileError("For weekly mileage of 65 or more, at least 6 run days per week are required.");
     }
 
     // Validate that long run day is within run days for non-strength goals

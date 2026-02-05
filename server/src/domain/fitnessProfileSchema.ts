@@ -8,6 +8,8 @@ export const FitnessProfileSchema = z.object({
 
   runningLevel: z.enum(["beginner", "intermediate", "advanced"]),
 
+  startingWeeklyMileage: z.number().min(0).max(200),
+
   currentWeeklyMileage: z.number().min(0).max(200),
 
   liftingExperience: z.enum(["beginner", "intermediate", "advanced"]),
@@ -34,4 +36,16 @@ export const FitnessProfileSchema = z.object({
     "marathon",
     "strength",
   ]),
+
+  peakLongRunLength: z.number().min(0).max(30).optional(),
+
+  trainingLengthWeeks: z.number().int().min(12).max(20),
+
+  weeksUntilRace: z.number().int().min(0).max(20).optional(),
+
+  weekType: z.enum(["B", "D", "T"]).optional(),
+
+  peakMileage: z.number().min(0).max(80).optional(),
+
+  longRunLength: z.number().min(0).max(30).optional(),
 }) satisfies z.ZodType<FitnessProfile>;
