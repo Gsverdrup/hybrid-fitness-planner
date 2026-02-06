@@ -448,11 +448,8 @@ function validateProfile(profile: FitnessProfile): void {
     }
 
     // Enforce minimum run days based on goal
-    if ((profile.goal === "marathon" || profile.goal === "half-marathon") && profile.runDaysPerWeek < 4) {
-      throw new FitnessProfileError("For marathon or half-marathon goal, at least 4 run days per week are required.");
-    }
-    if (profile.goal !== "strength" && profile.runDaysPerWeek < 3) {
-      throw new FitnessProfileError("For running-focused goals, at least 3 run days per week are required.");
+    if (profile.goal !== "strength" && profile.runDaysPerWeek < 4) {
+      throw new FitnessProfileError("For running-focused goals, at least 4 run days per week are required.");
     }
 
     // Enforce minimum run days based on weekly mileage
