@@ -50,20 +50,17 @@ function assignRunWorkouts(days: DailyPlan[], profile: FitnessProfile): void {
     ratio = { long: 0.40, easy: 0.60 };
   }
 
+  // Dynamic ratios for marathon based on current weekly mileage
   if (profile.goal === "marathon") {
-    if (profile.startingWeeklyMileage < 20) {
-      ratio.long = 0.40;
-      ratio.easy = 0.40;
-    } else if (profile.startingWeeklyMileage < 30) {
-      ratio.long = 0.30;
-      ratio.easy = 0.50;
-      if (profile.trainingLengthWeeks < 16) {
-        ratio.long = 0.35;
-        ratio.easy = 0.45;
-      }
+    const weeklyMiles = profile.currentWeeklyMileage;
+    if (weeklyMiles < 25) {
+      ratio = { long: 0.40, easy: 0.40 };
+    } else if (weeklyMiles < 35) {
+      ratio = { long: 0.35, easy: 0.45 };
+    } else if (weeklyMiles < 45) {
+      ratio = { long: 0.32, easy: 0.48 };
     } else {
-      ratio.long = 0.20;
-      ratio.easy = 0.60;
+      ratio = { long: 0.28, easy: 0.52 };
     }
   }
 
@@ -71,7 +68,7 @@ function assignRunWorkouts(days: DailyPlan[], profile: FitnessProfile): void {
   let longRunMiles: number;
   
   if (profile.longRunLength !== undefined) {
-    // Marathon plan has pre-calculated the exact long run distance
+    // Plan has pre-calculated the exact long run distance
     longRunMiles = profile.longRunLength;
 
     // Race week check
@@ -90,28 +87,60 @@ function assignRunWorkouts(days: DailyPlan[], profile: FitnessProfile): void {
         });
       }
       
-      return;
+      return; // Exit early because we're done with this week
     }
   } else {
-    // Calculate from ratio (for non-marathon or single-week plans)
+    // Calculate from ratio (for non-race or single-week plans)
     longRunMiles = profile.currentWeeklyMileage * ratio.long;
     
-    // Apply marathon minimums if applicable
-    if (profile.goal === "marathon" && profile.weeksUntilRace !== undefined) {
-      if (profile.weeksUntilRace === 3) {
-        longRunMiles = Math.max(longRunMiles, 20);
-      } else if (profile.weeksUntilRace === 4) {
-        longRunMiles = Math.max(longRunMiles, 18);
-      } else if (profile.weeksUntilRace >= 5 && profile.weeksUntilRace <= 8) {
-        const minLong = 14 + (8 - profile.weeksUntilRace);
-        longRunMiles = Math.max(longRunMiles, minLong);
-      } else if (profile.weeksUntilRace >= 9 && profile.weeksUntilRace <= 12) {
-        const minLong = 10 + (12 - profile.weeksUntilRace);
-        longRunMiles = Math.max(longRunMiles, minLong);
+    // Apply minimums based on goal and weeks until race
+    if (profile.weeksUntilRace !== undefined) {
+      // Marathon minimums
+      if (profile.goal === "marathon") {
+        if (profile.weeksUntilRace === 3) {
+          longRunMiles = Math.max(longRunMiles, 20);
+        } else if (profile.weeksUntilRace === 4) {
+          longRunMiles = Math.max(longRunMiles, 18);
+        } else if (profile.weeksUntilRace >= 5 && profile.weeksUntilRace <= 8) {
+          const minLong = 14 + (8 - profile.weeksUntilRace);
+          longRunMiles = Math.max(longRunMiles, minLong);
+        } else if (profile.weeksUntilRace >= 9 && profile.weeksUntilRace <= 12) {
+          const minLong = 10 + (12 - profile.weeksUntilRace);
+          longRunMiles = Math.max(longRunMiles, minLong);
+        }
+        longRunMiles = Math.min(longRunMiles, 20); // Cap at 20 miles
       }
       
-      // Cap at 20 miles
-      longRunMiles = Math.min(longRunMiles, 20);
+      // Half marathon minimums
+      else if (profile.goal === "half-marathon") {
+        if (profile.weeksUntilRace === 3) {
+          longRunMiles = Math.max(longRunMiles, 12);
+        } else if (profile.weeksUntilRace === 4) {
+          longRunMiles = Math.max(longRunMiles, 11);
+        } else if (profile.weeksUntilRace >= 5 && profile.weeksUntilRace <= 7) {
+          const minLong = 8 + (7 - profile.weeksUntilRace);
+          longRunMiles = Math.max(longRunMiles, minLong);
+        }
+        longRunMiles = Math.min(longRunMiles, 13); // Cap at 13 miles
+      }
+      
+      // 10k minimums
+      else if (profile.goal === "10k") {
+        if (profile.weeksUntilRace >= 2 && profile.weeksUntilRace <= 4) {
+          const minLong = 8 + (4 - profile.weeksUntilRace);
+          longRunMiles = Math.max(longRunMiles, minLong);
+        }
+        longRunMiles = Math.min(longRunMiles, 13); // Cap at 13 miles
+      }
+      
+      // 5k minimums
+      else if (profile.goal === "5k") {
+        if (profile.weeksUntilRace >= 2 && profile.weeksUntilRace <= 4) {
+          const minLong = 6 + (4 - profile.weeksUntilRace);
+          longRunMiles = Math.max(longRunMiles, minLong);
+        }
+        longRunMiles = Math.min(longRunMiles, 10); // Cap at 10 miles
+      }
     }
     
     // On build weeks, enforce minimum 1-mile increase from previous peak

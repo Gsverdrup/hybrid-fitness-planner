@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { generateWeeklyPlan } from "../services/planGenerator";
-import { FitnessProfile } from "../domain/fitnessProfile";
 import { FitnessProfileSchema } from "../domain/fitnessProfileSchema";
 
 const router = Router();

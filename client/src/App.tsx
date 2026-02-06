@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 
-const API_URL = "http://localhost:3001/plan";
-const MARATHON_API_URL = "http://localhost:3001/marathon-plan";
+const RACE_PLAN_BASE_URL = "http://localhost:3001/race-plan";
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default function App() {
@@ -35,11 +34,16 @@ export default function App() {
     trainingLengthWeeks: 16,
   });
 
+  // State for single-week plans (General/Strength)
   const [response, setResponse] = useState<any>(null);
-  const [marathonResponse, setMarathonResponse] = useState<any>(null);
+  // State for multi-week race plans (5k, 10k, Half, Full)
+  const [racePlanResponse, setRacePlanResponse] = useState<any>(null);
+  
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [marathonWeeks, setMarathonWeeks] = useState(16);
+  
+  // Generic week selector for all races
+  const [raceWeeks, setRaceWeeks] = useState(16);
 
   // Ensure Long Run Day is valid
   useEffect(() => {
@@ -71,6 +75,9 @@ export default function App() {
   const noWorkouts = profile.runDaysPerWeek === 0 && profile.liftDaysPerWeek === 0;
   const isInvalid = runDaysIncomplete || liftDaysIncomplete || noWorkouts;
 
+  // Check if current goal is a specific race type
+  const isRaceGoal = ["5k", "10k", "half-marathon", "marathon"].includes(profile.goal);
+
   const toggleDay = (dayIndex: number, key: "runDays" | "liftDays") => {
     setProfile((prev) => {
       const currentDays = prev[key];
@@ -81,61 +88,67 @@ export default function App() {
     });
   };
 
-  async function generatePlan() {
+  function getRaceEndpoint(goal: string) {
+    switch (goal) {
+      case "5k":
+        return "5k";
+      case "10k":
+        return "10k";
+      case "half-marathon":
+        return "half";
+      case "marathon":
+        return "marathon";
+      default:
+        return null; // general / hybrid plan
+    }
+  }
+
+  async function generateTrainingPlan() {
     if (isInvalid) return;
     setError(null);
     setLoading(true);
+
     try {
-      const res = await fetch(API_URL, {
+      const raceEndpoint = getRaceEndpoint(profile.goal);
+
+      const url = raceEndpoint
+        ? `${RACE_PLAN_BASE_URL}/${raceEndpoint}`
+        : "http://localhost:3001/plan";
+
+      const payload = raceEndpoint
+        ? {
+            ...profile,
+            // Use the UI selected weeks for any race type
+            trainingLengthWeeks: raceWeeks,
+          }
+        : profile;
+
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(profile),
+        body: JSON.stringify(payload),
       });
+
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.error || `HTTP Error: ${res.status}`);
       }
+
       const data = await res.json();
-      setResponse(data);
-      setMarathonResponse(null);
+
+      if (raceEndpoint) {
+        setRacePlanResponse(data);
+        setResponse(null);
+      } else {
+        setResponse(data);
+        setRacePlanResponse(null);
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
   }
-
-  async function generateMarathonPlan() {
-  if (isInvalid) return;
-  setError(null);
-  setLoading(true);
-  try {
-    const res = await fetch(MARATHON_API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      // FIX: Send just the profile, not wrapped in an object
-      body: JSON.stringify({
-        ...profile,
-        trainingLengthWeeks: marathonWeeks,
-        goal: "marathon", // Force goal to marathon
-      }),
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP Error: ${res.status}`);
-    }
-
-    const data = await res.json();
-    setMarathonResponse(data);
-    setResponse(null);
-  } catch (err: any) {
-    setError(err.message);
-  } finally {
-    setLoading(false);
-  }
-}
-
 
   // Map run types to colors
   const runColors: Record<string, string> = {
@@ -576,7 +589,7 @@ export default function App() {
           <div style={{ display: "flex", gap: "16px", justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
             <button 
               disabled={isInvalid || loading}
-              onClick={generatePlan} 
+              onClick={generateTrainingPlan}
               style={{ 
                 padding: "16px 48px",
                 fontSize: "16px",
@@ -604,69 +617,44 @@ export default function App() {
                 }
               }}
             >
-              {loading ? "Generating..." : "Generate Weekly Plan"}
+              {loading ? "Generating..." : "Generate Plan"}
             </button>
 
-            <div style={{ 
-              display: "flex", 
-              alignItems: "center", 
-              gap: "12px",
-              background: "rgba(255, 255, 255, 0.05)",
-              padding: "12px 20px",
-              borderRadius: "12px",
-              border: "1px solid rgba(255, 255, 255, 0.1)"
-            }}>
-              <label style={{ 
-                color: "rgba(255, 255, 255, 0.7)", 
-                fontSize: "13px", 
-                fontWeight: 600,
-                whiteSpace: "nowrap"
+            {/* Race Duration Selector - Visible for ALL race types */}
+            {isRaceGoal && (
+              <div style={{ 
+                display: "flex", 
+                alignItems: "center", 
+                gap: "12px",
+                background: "rgba(255, 255, 255, 0.05)",
+                padding: "12px 20px",
+                borderRadius: "12px",
+                border: "1px solid rgba(255, 255, 255, 0.1)",
+                animation: "fadeIn 0.3s ease-out"
               }}>
-                Marathon Plan:
-              </label>
-              <select 
-                value={marathonWeeks} 
-                onChange={e => setMarathonWeeks(+e.target.value)}
-                style={{ 
-                  width: "80px",
-                  padding: "8px 10px",
-                  fontSize: "14px"
-                }}
-              >
-                {[12, 13, 14, 15, 16, 17, 18, 19, 20].map(w => (
-                  <option key={w} value={w}>{w} weeks</option>
-                ))}
-              </select>
-              <button 
-                disabled={isInvalid || loading}
-                onClick={generateMarathonPlan}
-                style={{ 
-                  padding: "8px 24px",
-                  fontSize: "14px",
+                <label style={{ 
+                  color: "rgba(255, 255, 255, 0.7)", 
+                  fontSize: "13px", 
                   fontWeight: 600,
-                  borderRadius: "8px",
-                  border: "none",
-                  cursor: isInvalid || loading ? "not-allowed" : "pointer", 
-                  background: isInvalid || loading ? "rgba(255, 255, 255, 0.1)" : "linear-gradient(135deg, #10b981, #059669)",
-                  color: isInvalid || loading ? "rgba(255, 255, 255, 0.3)" : "#fff",
-                  transition: "all 0.3s",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.5px"
-                }}
-                onMouseOver={(e) => {
-                  if (!isInvalid && !loading) {
-                    e.currentTarget.style.transform = "translateY(-2px)";
-                  }
-                }}
-                onMouseOut={(e) => {
-                  if (!isInvalid && !loading) {
-                    e.currentTarget.style.transform = "translateY(0)";
-                  }
-                }}
-              >
-                Generate
-              </button>
-            </div>
+                  whiteSpace: "nowrap"
+                }}>
+                  Race Duration:
+                </label>
+                <select 
+                  value={raceWeeks} 
+                  onChange={e => setRaceWeeks(+e.target.value)}
+                  style={{ 
+                    width: "90px",
+                    padding: "8px 10px",
+                    fontSize: "14px"
+                  }}
+                >
+                  {[8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].map(w => (
+                    <option key={w} value={w}>{w} weeks</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
         </div>
 
@@ -686,7 +674,7 @@ export default function App() {
           </div>
         )}
 
-        {/* Generated Plan Display */}
+        {/* Generated Single Week Plan Display */}
         {response && (
           <div style={{ animation: "fadeIn 0.6s ease-out" }}>
             <h2 style={{ 
@@ -849,8 +837,8 @@ export default function App() {
           </div>
         )}
 
-        {/* Marathon Plan Display */}
-        {marathonResponse && (
+        {/* Multi-Week Race Plan Display */}
+        {racePlanResponse && (
           <div style={{ animation: "fadeIn 0.6s ease-out" }}>
             <h2 style={{ 
               color: "#fff", 
@@ -858,9 +846,10 @@ export default function App() {
               fontFamily: "'Bebas Neue', sans-serif",
               letterSpacing: "1px",
               marginBottom: "16px",
-              textAlign: "center"
+              textAlign: "center",
+              textTransform: "uppercase"
             }}>
-              {marathonWeeks}-WEEK MARATHON PLAN
+              {raceWeeks}-WEEK {profile.goal.replace("-", " ")} PLAN
             </h2>
             <p style={{ 
               color: "rgba(255, 255, 255, 0.6)",
@@ -868,9 +857,9 @@ export default function App() {
               marginBottom: "32px",
               fontSize: "14px"
             }}>
-              Progressive training plan from {marathonResponse[0].days.reduce((sum: number, d: any) => 
+              Progressive training plan from {racePlanResponse[0].days.reduce((sum: number, d: any) => 
                 sum + d.workouts.filter((w: any) => w.type === "run").reduce((s: number, w: any) => s + w.miles, 0)
-              , 0).toFixed(1)} to peak {Math.max(...marathonResponse.map((week: any) => 
+              , 0).toFixed(1)} to peak {Math.max(...racePlanResponse.map((week: any) => 
                 week.days.reduce((sum: number, d: any) => 
                   sum + d.workouts.filter((w: any) => w.type === "run").reduce((s: number, w: any) => s + w.miles, 0)
                 , 0)
@@ -879,16 +868,19 @@ export default function App() {
 
             {/* Week-by-week cards */}
             <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-              {marathonResponse.map((week: any, weekIdx: number) => {
+              {racePlanResponse.map((week: any, weekIdx: number) => {
                 const totalMiles = week.days.reduce((sum: number, d: any) => 
                   sum + d.workouts.filter((w: any) => w.type === "run").reduce((s: number, w: any) => s + w.miles, 0)
                 , 0);
                 
+                // Simple logic to detect tapering or deload weeks based on volume drops
+                const prevWeekMiles = weekIdx > 0 ? racePlanResponse[weekIdx - 1].days.reduce((sum: number, d: any) => 
+                  sum + d.workouts.filter((w: any) => w.type === "run").reduce((s: number, w: any) => s + w.miles, 0)
+                , 0) : 0;
+
                 const weekType = 
-                  weekIdx >= marathonWeeks - 2 ? "Taper" :
-                  totalMiles < marathonResponse[Math.max(0, weekIdx - 1)]?.days.reduce((sum: number, d: any) => 
-                    sum + d.workouts.filter((w: any) => w.type === "run").reduce((s: number, w: any) => s + w.miles, 0)
-                  , 0) * 0.9 ? "Deload" :
+                  weekIdx >= raceWeeks - 2 ? "Taper" :
+                  weekIdx > 0 && totalMiles < prevWeekMiles * 0.9 ? "Deload" :
                   "Build";
 
                 const weekColor = 

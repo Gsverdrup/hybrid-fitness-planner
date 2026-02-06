@@ -9,7 +9,7 @@ app.use(cors());
 app.use(express.json());
 app.use("/users", usersRouter);
 app.use("/plan", planRouter);
-app.use("/marathon-plan", racePlanRouter);
+app.use("/race-plan", racePlanRouter);
 
 app.get('/health', (_, res) => {
   res.json({ status: 'ok' });
