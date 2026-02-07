@@ -48,4 +48,20 @@ export const FitnessProfileSchema = z.object({
   peakMileage: z.number().min(0).max(80).optional(),
 
   longRunLength: z.number().min(0).max(30).optional(),
+
+  providedRaceTime: z.object({
+    distanceKm: z.number().min(0.1).max(42.195),
+    timeMinutes: z.number().min(1).max(24 * 60),
+  }).optional(),
+
+  paceChart: z.object({
+    race1Mile: z.number().min(1).max(20),
+    race5k: z.number().min(1).max(20),
+    race10k: z.number().min(1).max(20),
+    raceHalfMarathon: z.number().min(1).max(20),
+    raceMarathon: z.number().min(1).max(20),
+    easyRun: z.number().min(1).max(20),
+    thresholdRun: z.number().min(1).max(20),
+    intervalRun: z.number().min(1).max(20),
+  }).optional(),
 }) satisfies z.ZodType<FitnessProfile>;

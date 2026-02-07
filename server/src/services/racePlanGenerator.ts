@@ -1,6 +1,7 @@
 import { generateWeeklyPlan, FitnessProfileError } from "./planGenerator";
 import { FitnessProfile, weekType } from "../domain/fitnessProfile";
 import { WeeklyPlan } from "../domain/weeklyPlan";
+import { applyPacesToPlan } from "./paceCalculator";
 
 // ------------------------------------------------------------
 // MARATHON PLAN GENERATOR
@@ -126,9 +127,13 @@ export function generateMarathonPlan(profile: FitnessProfile): WeeklyPlan[] {
         profile.currentWeeklyMileage = weeklyMileages[week];
         profile.longRunLength = longRunLengths[week];
 
-        const curWeek: WeeklyPlan = generateWeeklyPlan(profile);
+        let curWeek: WeeklyPlan = generateWeeklyPlan(profile);
+        curWeek.weekType = weekType;
         racePlan.push(curWeek);
     }
+
+    // Add paces to the plan
+    applyPacesToPlan(racePlan, profile);
 
     return racePlan;
 }
@@ -259,8 +264,6 @@ export function generateHalfMarathonPlan(profile: FitnessProfile): WeeklyPlan[] 
         profile.runningLevel
     );
 
-    console.log(`Half Marathon Plan - Target peak: ${targetPeakMileage}, Starting: ${profile.startingWeeklyMileage}`);
-
     const deloadFactor = profile.runningLevel === "beginner" ? 0.75 :
                         profile.runningLevel === "intermediate" ? 0.80 : 0.85;
 
@@ -332,9 +335,13 @@ export function generateHalfMarathonPlan(profile: FitnessProfile): WeeklyPlan[] 
         profile.currentWeeklyMileage = weeklyMileages[week];
         profile.longRunLength = longRunLengths[week];
 
-        const curWeek: WeeklyPlan = generateWeeklyPlan(profile);
+        let curWeek: WeeklyPlan = generateWeeklyPlan(profile);
+        curWeek.weekType = weekType;
         racePlan.push(curWeek);
     }
+
+    // Add paces to the plan
+    applyPacesToPlan(racePlan, profile);
 
     return racePlan;
 }
@@ -455,8 +462,6 @@ export function generate10kPlan(profile: FitnessProfile): WeeklyPlan[] {
         profile.runningLevel
     );
 
-    console.log(`10k Plan - Target peak: ${targetPeakMileage}, Starting: ${profile.startingWeeklyMileage}`);
-
     const deloadFactor = profile.runningLevel === "beginner" ? 0.70 :
                         profile.runningLevel === "intermediate" ? 0.75 : 0.80;
 
@@ -522,9 +527,13 @@ export function generate10kPlan(profile: FitnessProfile): WeeklyPlan[] {
         profile.currentWeeklyMileage = weeklyMileages[week];
         profile.longRunLength = longRunLengths[week];
 
-        const curWeek: WeeklyPlan = generateWeeklyPlan(profile);
+        let curWeek: WeeklyPlan = generateWeeklyPlan(profile);
+        curWeek.weekType = weekType;
         racePlan.push(curWeek);
     }
+
+    // Add paces to the plan
+    applyPacesToPlan(racePlan, profile);
 
     return racePlan;
 }
@@ -634,8 +643,6 @@ export function generate5kPlan(profile: FitnessProfile): WeeklyPlan[] {
         profile.runningLevel
     );
 
-    console.log(`5k Plan - Target peak: ${targetPeakMileage}, Starting: ${profile.startingWeeklyMileage}`);
-
     // Set deload factor
     const deloadFactor = profile.runningLevel === "beginner" ? 0.70 :
                         profile.runningLevel === "intermediate" ? 0.75 : 0.80;
@@ -708,11 +715,13 @@ export function generate5kPlan(profile: FitnessProfile): WeeklyPlan[] {
         profile.currentWeeklyMileage = weeklyMileages[week];
         profile.longRunLength = longRunLengths[week];
 
-        console.log(`Week ${week + 1}: ${profile.currentWeeklyMileage} mi, Long: ${profile.longRunLength} mi`);
-
-        const curWeek: WeeklyPlan = generateWeeklyPlan(profile);
+        let curWeek: WeeklyPlan = generateWeeklyPlan(profile);
+        curWeek.weekType = weekType;
         racePlan.push(curWeek);
     }
+
+    // Add paces to the plan
+    applyPacesToPlan(racePlan, profile);
 
     return racePlan;
 }

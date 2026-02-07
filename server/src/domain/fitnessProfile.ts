@@ -1,3 +1,5 @@
+import { paceChart } from "./paceChart";
+
 export type RunningLevel = "beginner" | "intermediate" | "advanced";
 export type LiftingLevel = "beginner" | "intermediate" | "advanced";
 export type Goal = "general" | "5k" | "10k" | "half-marathon" | "marathon" | "strength";
@@ -23,4 +25,9 @@ export interface FitnessProfile {
   weekType?: weekType;
   peakMileage?: number;
   longRunLength?: number;
+  providedRaceTime?: {
+    distanceKm: number;
+    timeMinutes: number;
+  };
+  paceChart?: paceChart;
 }

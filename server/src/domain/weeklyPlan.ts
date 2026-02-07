@@ -5,6 +5,7 @@ export interface RunWorkout {
   type: "run";
   runType: RunType;
   miles: number;
+  paceMinPerMile?: number; 
 }
 
 export interface LiftWorkout {
@@ -21,4 +22,5 @@ export interface DailyPlan {
 
 export interface WeeklyPlan {
   days: DailyPlan[];
+  weekType?: "B" | "D" | "T";
 }
