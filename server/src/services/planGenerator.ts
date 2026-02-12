@@ -527,7 +527,7 @@ function validateDayArray(days: number[], label: string): void {
 // --------------------------------
 // Utilities
 // --------------------------------
-function roundToNearestQuarter(num: number): number {
+export function roundToNearestQuarter(num: number): number {
   return Math.round(num * 4) / 4;
 }
 

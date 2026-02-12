@@ -1,11 +1,16 @@
 import { FitnessProfile } from "../domain/fitnessProfile";
 import { FitnessProfileError } from "./planGenerator";
 import { DailyPlan, WeeklyPlan } from "../domain/weeklyPlan";
+import { generateRunSegments } from "./runDetailGenerator";
 
 const MILE_IN_KM = 1.60934;
 
 export function applyPacesToPlan(racePlan: WeeklyPlan[], profile: FitnessProfile): void {
     populatePaceChart(profile);
+
+    if (!profile.paceChart) {
+        throw new FitnessProfileError("Pace chart must be populated after calling populatePaceChart.");
+    }
 
     // Calculate improvement factor based on profile to adjust paces for workout days
     const totalImprovement: number = calculatePaceImprovementDelta(profile);
@@ -19,8 +24,11 @@ export function applyPacesToPlan(racePlan: WeeklyPlan[], profile: FitnessProfile
     const improvementPerBuildWeek: number = buildWeeks > 0 ? totalImprovement / buildWeeks : 0;
     let buildWeekIndex: number = 0;
 
-    let workoutRotation: ("tempo" | "interval")[] = ["tempo", "interval"];
+    let workoutRotation: ("classic-tempo" | "cruise-tempo" | "progressive-tempo" | "400m" | "800m" | "ladder")[] = ["classic-tempo", "400m", "cruise-tempo", "800m", "progressive-tempo", "ladder"];
     let workoutIndex: number = 0;
+
+    let longRunRotation: ("easy" | "fast-finish" | "marathon-pace")[] = ["easy", "fast-finish", "marathon-pace"];
+    let longRunIndex: number = 0;
 
     for (let weekIdx = 0; weekIdx < racePlan.length; weekIdx++) {
         const weekPlan = racePlan[weekIdx];
@@ -45,12 +53,17 @@ export function applyPacesToPlan(racePlan: WeeklyPlan[], profile: FitnessProfile
 
             if (run.runType === "easy") {
                 run.paceMinPerMile = profile.paceChart!.easyRun;
+                generateRunSegments(profile, run);
             } else if (run.runType === "workout") {
                 // Alternate between tempo and interval paces for workout days
-                if (workoutRotation[workoutIndex % workoutRotation.length] === "tempo") {
+                if (workoutRotation[workoutIndex % workoutRotation.length] === "classic-tempo" 
+                    || workoutRotation[workoutIndex % workoutRotation.length] === "cruise-tempo" 
+                    || workoutRotation[workoutIndex % workoutRotation.length] === "progressive-tempo") {
                     run.paceMinPerMile = profile.paceChart!.thresholdRun / thresholdMultiplier;
+                    generateRunSegments(profile, run, workoutRotation[workoutIndex % workoutRotation.length]);
                 } else {
                     run.paceMinPerMile = profile.paceChart!.intervalRun / intervalMultiplier;
+                    generateRunSegments(profile, run, workoutRotation[workoutIndex % workoutRotation.length]);
                 }
                 workoutIndex++;
             } else if (run.runType === "long") {
@@ -59,6 +72,8 @@ export function applyPacesToPlan(racePlan: WeeklyPlan[], profile: FitnessProfile
                     ? profile.paceChart!.easyRun * 0.97  // Advanced: 3% faster than easy
                     : profile.paceChart!.easyRun;
                 run.paceMinPerMile = longRunPace;
+                generateRunSegments(profile, run, undefined, longRunRotation[longRunIndex % longRunRotation.length]);
+                longRunIndex++;
             } else {
                 throw new FitnessProfileError(`Unknown run type: ${run.runType}`);
             }
@@ -83,7 +98,6 @@ export function populatePaceChart(profile: FitnessProfile): void {
     const easyFrom5k = pace5k * 1.25;
     const easyFromMarathon = calculateRacePace(profile, 42.195) + 0.5;
 
-
     profile.paceChart = {
         race1Mile: calculateRacePace(profile, MILE_IN_KM),
         race5k: calculateRacePace(profile, 5),
@@ -91,30 +105,46 @@ export function populatePaceChart(profile: FitnessProfile): void {
         raceHalfMarathon: calculateRacePace(profile, 13.1094 * MILE_IN_KM),
         raceMarathon: calculateRacePace(profile, 42.195 * MILE_IN_KM),
         easyRun: Math.max(easyFrom5k, easyFromMarathon),
-        thresholdRun: pace5k * 1.08,
-        intervalRun: pace5k * 0.95,
+        thresholdRun: pace5k + 0.25, // 15 seconds per mile slower than 5k pace
+        intervalRun: pace5k - 0.15, // 9 seconds per mile faster than 5k pace
     }
 }
 
 function calculateRacePace(profile: FitnessProfile, outputDistanceKm: number): number {
     // Returns pace in minutes per mile for the given distance based on the provided race
-    if (profile.providedRaceTime !== undefined && profile.providedRaceTime?.distanceKm <= 0) {
+    if (profile.providedRaceTime === undefined) {
+        throw new FitnessProfileError("Provided race time is required to calculate race pace.");
+    }
+
+    if (profile.providedRaceTime.distanceKm <= 0) {
         throw new FitnessProfileError("Distance must be greater than zero.");
     }
 
-    if (profile.providedRaceTime !== undefined && profile.providedRaceTime?.timeMinutes <= 0) {
+    if (profile.providedRaceTime.timeMinutes <= 0) {
         throw new FitnessProfileError("Time must be greater than zero.");
     }
 
-    // Riegel's formula: T2 = T1 * (D2 / D1)^1.06
-    let time: number;
-    if (profile.goal === "half-marathon" || profile.goal === "marathon") {
-        // Use exponent of 1.08 for longer distances to reflect greater fatigue impact
-        time = profile.providedRaceTime!.timeMinutes * Math.pow(outputDistanceKm / profile.providedRaceTime!.distanceKm, 1.08);
-    } else {
-        time = profile.providedRaceTime!.timeMinutes * Math.pow(outputDistanceKm / profile.providedRaceTime!.distanceKm, 1.06);
+    const inputDistanceKm = profile.providedRaceTime.distanceKm;
+    const inputTimeMinutes = profile.providedRaceTime.timeMinutes;
+    const distanceRatio = outputDistanceKm / inputDistanceKm;
+
+    // Choose exponent based on distance ratio, not goal
+    let exponent = 1.06; // Standard Riegel
+    
+    if (distanceRatio > 4) {
+        // Predicting much longer (e.g., 5k → marathon)
+        exponent = 1.08;
+    } else if (distanceRatio > 2) {
+        // Moderate jump (e.g., 10k → marathon)
+        exponent = 1.07;
+    } else if (distanceRatio < 0.25) {
+        // Predicting much shorter (e.g., marathon → 5k)
+        exponent = 1.05;
     }
-    const paceMinPerMile = time / (outputDistanceKm / MILE_IN_KM); // Convert km to miles
+
+    // Riegel's formula: T2 = T1 * (D2 / D1)^exponent
+    let predictedTime = inputTimeMinutes * Math.pow(distanceRatio, exponent);
+    const paceMinPerMile = predictedTime / (outputDistanceKm / MILE_IN_KM); // Convert km to miles
     return paceMinPerMile;
 }
 

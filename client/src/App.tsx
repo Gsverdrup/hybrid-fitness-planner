@@ -11,9 +11,7 @@ function formatPace(paceMinPerMile?: number): string {
 }
 
 function parseTimeToMinutes(value: string): number {
-  // Supports mm:ss or hh:mm:ss
   const parts = value.split(":").map(Number);
-
   if (parts.some(isNaN)) return 0;
 
   if (parts.length === 2) {
@@ -29,6 +27,13 @@ function parseTimeToMinutes(value: string): number {
   return 0;
 }
 
+function getRunLabel(workout: any): string {
+  if (workout.name) return workout.name;
+  if (workout.runType === "long") return "Long Run";
+  if (workout.runType === "workout") return "Workout";
+  if (workout.runType === "easy") return "Easy Run";
+  return "Run";
+}
 
 export default function App() {
   const [profile, setProfile] = useState({
@@ -54,8 +59,8 @@ export default function App() {
   const [plan, setPlan] = useState<any>(null);
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [selectedWorkout, setSelectedWorkout] = useState<any>(null);
 
-  // Auto-select first run day as long run day
   useEffect(() => {
     if (profile.runDays.length > 0 && !profile.runDays.includes(profile.longRunDay)) {
       setProfile(p => ({ ...p, longRunDay: p.runDays[0] }));
@@ -129,6 +134,184 @@ export default function App() {
     upper: "#06b6d4",
   };
 
+  const WorkoutCard = ({ workout, onClick }: { workout: any; onClick?: () => void }) => {
+    if (workout.type === "run") {
+      return (
+        <div
+          onClick={onClick}
+          style={{
+            background: runColors[workout.runType],
+            padding: "6px",
+            borderRadius: "4px",
+            fontSize: "11px",
+            textAlign: "center",
+            cursor: onClick ? "pointer" : "default",
+            transition: "transform 0.2s",
+          }}
+          onMouseEnter={(e) => onClick && (e.currentTarget.style.transform = "scale(1.05)")}
+          onMouseLeave={(e) => onClick && (e.currentTarget.style.transform = "scale(1)")}
+        >
+          <div style={{ fontSize: "9px", opacity: 0.8 }}>{getRunLabel(workout)}</div>
+          <div style={{ fontWeight: 700, fontSize: "13px" }}>{workout.miles} mi</div>
+          {workout.paceMinPerMile && (
+            <div style={{ fontSize: "9px", opacity: 0.9 }}>{formatPace(workout.paceMinPerMile)}</div>
+          )}
+        </div>
+      );
+    } else {
+      return (
+        <div
+          style={{
+            background: liftColors[workout.liftType],
+            padding: "6px",
+            borderRadius: "4px",
+            fontSize: "11px",
+            textAlign: "center",
+          }}
+        >
+          <div>{workout.liftType}</div>
+        </div>
+      );
+    }
+  };
+
+  const WorkoutDetailModal = ({ workout, onClose }: { workout: any; onClose: () => void }) => {
+    if (!workout || workout.type !== "run") return null;
+
+    return (
+      <div
+        onClick={onClose}
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "rgba(0, 0, 0, 0.8)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000,
+          padding: "20px",
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            background: "#1e293b",
+            borderRadius: "12px",
+            padding: "32px",
+            maxWidth: "600px",
+            width: "100%",
+            maxHeight: "80vh",
+            overflowY: "auto",
+          }}
+        >
+          <button
+            onClick={onClose}
+            style={{
+              float: "right",
+              background: "transparent",
+              border: "none",
+              color: "#94a3b8",
+              fontSize: "24px",
+              cursor: "pointer",
+              padding: "0 8px",
+            }}
+          >
+            ×
+          </button>
+
+          <div style={{ marginBottom: "24px" }}>
+            <div
+              style={{
+                display: "inline-block",
+                padding: "6px 12px",
+                background: runColors[workout.runType],
+                borderRadius: "6px",
+                fontSize: "12px",
+                fontWeight: 600,
+                marginBottom: "12px",
+              }}
+            >
+              {workout.runType.toUpperCase()}
+            </div>
+            <h2 style={{ margin: "0 0 8px 0", fontSize: "28px" }}>{getRunLabel(workout)}</h2>
+            <div style={{ color: "#94a3b8", fontSize: "14px" }}>
+              {workout.miles} miles
+              {workout.paceMinPerMile && ` @ ${formatPace(workout.paceMinPerMile)} /mi`}
+            </div>
+          </div>
+
+          {workout.segments && workout.segments.length > 0 && (
+            <div>
+              <h3 style={{ fontSize: "18px", marginBottom: "16px" }}>Workout Structure</h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {workout.segments.map((seg: any, idx: number) => (
+                  <div
+                    key={idx}
+                    style={{
+                      background: "#0f172a",
+                      padding: "16px",
+                      borderRadius: "8px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 600, marginBottom: "4px" }}>
+                        {seg.description || `Segment ${idx + 1}`}
+                      </div>
+                      <div style={{ fontSize: "14px", color: "#94a3b8" }}>
+                        {seg.distanceMiles} miles @ {formatPace(seg.pace)} /mi
+                      </div>
+                    </div>
+                    <div style={{ fontSize: "20px", fontWeight: 700, color: "#3b82f6" }}>
+                      {formatPace(seg.pace)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {(!workout.segments || workout.segments.length === 0) && (
+            <div style={{ background: "#0f172a", padding: "20px", borderRadius: "8px" }}>
+              <div style={{ fontSize: "14px", color: "#94a3b8", marginBottom: "8px" }}>
+                Total Distance
+              </div>
+              <div style={{ fontSize: "32px", fontWeight: 700, marginBottom: "16px" }}>
+                {workout.miles} miles
+              </div>
+              {workout.paceMinPerMile && (
+                <>
+                  <div style={{ fontSize: "14px", color: "#94a3b8", marginBottom: "8px" }}>
+                    Target Pace
+                  </div>
+                  <div style={{ fontSize: "32px", fontWeight: 700, color: "#3b82f6" }}>
+                    {formatPace(workout.paceMinPerMile)} /mi
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          <div style={{ marginTop: "24px", padding: "16px", background: "#0f172a", borderRadius: "8px" }}>
+            <div style={{ fontSize: "14px", fontWeight: 600, marginBottom: "8px" }}>
+              💡 Tips
+            </div>
+            <div style={{ fontSize: "14px", color: "#94a3b8", lineHeight: 1.6 }}>
+              {workout.runType === "easy" && "Keep this run conversational. You should be able to chat comfortably."}
+              {workout.runType === "long" && "Start slow and maintain steady effort. Fuel and hydrate appropriately."}
+              {workout.runType === "workout" && "Warm up thoroughly before starting. Focus on consistent effort and good form."}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div style={{ minHeight: "100vh", background: "#0f172a", padding: "20px", color: "#fff" }}>
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
@@ -137,7 +320,7 @@ export default function App() {
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", marginBottom: "32px" }}>
           
-          {/* Profile */}
+          {/* Profile - keeping the same from your document */}
           <div style={{ background: "#1e293b", padding: "24px", borderRadius: "12px" }}>
             <h3 style={{ marginTop: 0 }}>Profile</h3>
             
@@ -185,7 +368,6 @@ export default function App() {
                   Recent Race Result
                 </div>
 
-                {/* Distance */}
                 <label style={{ display: "block", marginBottom: "8px" }}>
                   <div style={{ fontSize: "12px", color: "#94a3b8" }}>Distance</div>
                   <select
@@ -216,7 +398,6 @@ export default function App() {
                   </select>
                 </label>
 
-                {/* Time */}
                 <label style={{ display: "block" }}>
                   <div style={{ fontSize: "12px", color: "#94a3b8" }}>Time (mm:ss or hh:mm:ss)</div>
                   <input
@@ -291,7 +472,7 @@ export default function App() {
             )}
           </div>
 
-          {/* Schedule */}
+          {/* Schedule - keeping the same */}
           <div style={{ background: "#1e293b", padding: "24px", borderRadius: "12px" }}>
             <h3 style={{ marginTop: 0 }}>Schedule</h3>
 
@@ -386,7 +567,9 @@ export default function App() {
         <div style={{ textAlign: "center", marginBottom: "32px" }}>
           {!isValid && (
             <p style={{ color: "#f59e0b", marginBottom: "16px" }}>
-              ⚠️ Please select the correct number of days
+              ⚠️ {isRaceGoal && (!profile.providedRaceTime?.timeMinutes || profile.providedRaceTime.timeMinutes <= 0)
+                ? "Please provide a valid race time"
+                : "Please select the correct number of days"}
             </p>
           )}
           <button
@@ -408,18 +591,22 @@ export default function App() {
           </button>
         </div>
 
-        {/* Error */}
         {error && (
           <div style={{ padding: "16px", background: "#7f1d1d", borderRadius: "8px", marginBottom: "32px", border: "1px solid #991b1b" }}>
             ⚠️ {error}
           </div>
         )}
 
-        {/* Display Plan */}
+        {selectedWorkout && (
+          <WorkoutDetailModal
+            workout={selectedWorkout}
+            onClose={() => setSelectedWorkout(null)}
+          />
+        )}
+
         {plan && (
           <div>
             {Array.isArray(plan) ? (
-              // Multi-week race plan
               <div>
                 <h2 style={{ textAlign: "center", marginBottom: "24px" }}>
                   {profile.trainingLengthWeeks}-Week {profile.goal.toUpperCase()} Plan
@@ -460,31 +647,15 @@ export default function App() {
                               {day.workouts.length === 0 ? (
                                 <div style={{ color: "#475569", fontSize: "11px", fontStyle: "italic" }}>Rest</div>
                               ) : (
-                                day.workouts.map((w: any, idx: number) => (
-                                  <div
-                                    key={idx}
-                                    style={{
-                                      background: w.type === "run" ? runColors[w.runType] : liftColors[w.liftType],
-                                      padding: "6px",
-                                      borderRadius: "4px",
-                                      marginTop: idx > 0 ? "4px" : "0",
-                                      fontSize: "11px",
-                                      textAlign: "center"
-                                    }}
-                                  >
-                                    {w.type === "run" ? (
-                                      <>
-                                        <div style={{ fontSize: "9px", opacity: 0.8 }}>{w.runType}</div>
-                                        <div style={{ fontWeight: 700, fontSize: "13px" }}>{w.miles}</div>
-                                        {w.paceMinPerMile && (
-                                          <div style={{ fontSize: "9px", opacity: 0.9 }}>{formatPace(w.paceMinPerMile)}</div>
-                                        )}
-                                      </>
-                                    ) : (
-                                      <div>{w.liftType}</div>
-                                    )}
-                                  </div>
-                                ))
+                                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                                  {day.workouts.map((w: any, idx: number) => (
+                                    <WorkoutCard 
+                                      key={idx} 
+                                      workout={w}
+                                      onClick={w.type === "run" ? () => setSelectedWorkout(w) : undefined}
+                                    />
+                                  ))}
+                                </div>
                               )}
                             </div>
                           ))}
@@ -495,7 +666,6 @@ export default function App() {
                 </div>
               </div>
             ) : (
-              // Single week plan
               <div>
                 <h2 style={{ textAlign: "center", marginBottom: "24px" }}>Weekly Plan</h2>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "12px" }}>
@@ -507,31 +677,15 @@ export default function App() {
                       {day.workouts.length === 0 ? (
                         <div style={{ color: "#475569", fontSize: "12px", fontStyle: "italic" }}>Rest</div>
                       ) : (
-                        day.workouts.map((w: any, idx: number) => (
-                          <div
-                            key={idx}
-                            style={{
-                              background: w.type === "run" ? runColors[w.runType] : liftColors[w.liftType],
-                              padding: "8px",
-                              borderRadius: "6px",
-                              marginTop: idx > 0 ? "6px" : "0",
-                              fontSize: "13px",
-                              textAlign: "center"
-                            }}
-                          >
-                            {w.type === "run" ? (
-                              <>
-                                <div style={{ fontSize: "10px", opacity: 0.8 }}>{w.runType}</div>
-                                <div style={{ fontWeight: 700 }}>{w.miles} mi</div>
-                                {w.paceMinPerMile && (
-                                  <div style={{ fontSize: "10px", opacity: 0.9 }}>{formatPace(w.paceMinPerMile)}</div>
-                                )}
-                              </>
-                            ) : (
-                              <div>{w.liftType}</div>
-                            )}
-                          </div>
-                        ))
+                        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                          {day.workouts.map((w: any, idx: number) => (
+                            <WorkoutCard 
+                              key={idx} 
+                              workout={w}
+                              onClick={w.type === "run" ? () => setSelectedWorkout(w) : undefined}
+                            />
+                          ))}
+                        </div>
                       )}
                     </div>
                   ))}

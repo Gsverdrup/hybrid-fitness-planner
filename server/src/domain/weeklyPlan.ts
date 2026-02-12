@@ -6,6 +6,8 @@ export interface RunWorkout {
   runType: RunType;
   miles: number;
   paceMinPerMile?: number; 
+  name?: string;
+  segments?: RunSegment[];
 }
 
 export interface LiftWorkout {
@@ -24,3 +26,9 @@ export interface WeeklyPlan {
   days: DailyPlan[];
   weekType?: "B" | "D" | "T";
 }
+
+export type RunSegment = {
+  distanceMiles: number;
+  pace: number;
+  description?: string;
+};
