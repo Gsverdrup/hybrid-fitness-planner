@@ -3,6 +3,31 @@ import { useState, useEffect } from "react";
 const API_URL = "http://localhost:3001";
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+// ── Exercise library (mirrors backend liftExercises.ts) ──────────────────────
+const EXERCISE_OPTIONS = {
+  primaryChest:   ["Barbell Bench Press","Incline Barbell Bench Press","Dumbbell Bench Press","Incline Dumbbell Bench Press","Machine Chest Press"],
+  secondaryChest: ["Dumbbell Chest Flyes","Cable Chest Flyes","Machine Chest Flyes","Push-Ups"],
+  frontDelt:      ["Standing Overhead Press","Dumbbell Shoulder Press"],
+  lateralDelt:    ["Dumbbell Lateral Raises","Cable Lateral Raises"],
+  tricep:         ["Tricep Dips","Overhead Tricep Extension","Tricep Pushdowns","Skull Crushers"],
+  lat:            ["Lat Pulldowns","Single-Arm Lat Pulldowns","Pull-Ups","Lat Pullovers"],
+  midBack:        ["Barbell Rows","Dumbbell Rows","Seated Cable Rows","Chest-Supported Rows"],
+  rearDelt:       ["Cable Rear Delt Flyes","Machine Rear Delt Flyes","Face Pulls"],
+  bicep:          ["Barbell Curls","Hammer Curls","Dumbbell Curls","Preacher Curls"],
+  compoundLeg:    ["Back Squats","Leg Press","Bulgarian Split Squats","Goblet Squats"],
+  quad:           ["Leg Extensions","Step-Ups","Lunges"],
+  hamstring:      ["Romanian Deadlifts","Hamstring Curls","Good Mornings"],
+  glute:          ["Hip Thrusts","Glute Bridges","Hip Abductions","Hip Adductions"],
+  calf:           ["Standing Calf Raises","Seated Calf Raises"],
+} as const;
+
+type MuscleGroup = keyof typeof EXERCISE_OPTIONS;
+
+// Default preferences = first option per group (matches backend default)
+const DEFAULT_PREFS: Record<MuscleGroup, string> = Object.fromEntries(
+  Object.entries(EXERCISE_OPTIONS).map(([k, v]) => [k, v[0]])
+) as Record<MuscleGroup, string>;
+
 function formatPace(paceMinPerMile?: number): string {
   if (!paceMinPerMile) return "";
   const minutes = Math.floor(paceMinPerMile);
@@ -60,6 +85,9 @@ export default function App() {
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [selectedWorkout, setSelectedWorkout] = useState<any>(null);
+  const [selectedLift, setSelectedLift] = useState<any>(null);
+  const [showExercisePrefs, setShowExercisePrefs] = useState(false);
+  const [exercisePrefs, setExercisePrefs] = useState<Record<MuscleGroup, string>>(DEFAULT_PREFS);
 
   useEffect(() => {
     if (profile.runDays.length > 0 && !profile.runDays.includes(profile.longRunDay)) {
@@ -101,10 +129,29 @@ export default function App() {
       else if (profile.goal === "half-marathon") endpoint = "/race-plan/half";
       else if (profile.goal === "marathon") endpoint = "/race-plan/marathon";
 
+      // Build preferredLiftExercises in the shape the backend expects
+      // Each key maps to an Exercise[] with sets/reps omitted (backend supplies those)
+      const preferredLiftExercises = profile.liftDaysPerWeek > 0 ? {
+        primaryChestExercises:   [{ name: exercisePrefs.primaryChest,   sets: 4, reps: 8  }],
+        secondaryChestExercises: [{ name: exercisePrefs.secondaryChest, sets: 3, reps: 12 }],
+        frontDeltExercises:      [{ name: exercisePrefs.frontDelt,      sets: 3, reps: 10 }],
+        lateralDeltExercises:    [{ name: exercisePrefs.lateralDelt,    sets: 3, reps: 12 }],
+        tricepExercises:         [{ name: exercisePrefs.tricep,         sets: 3, reps: 10 }],
+        latExercises:            [{ name: exercisePrefs.lat,            sets: 4, reps: 8  }],
+        midBackExercises:        [{ name: exercisePrefs.midBack,        sets: 4, reps: 8  }],
+        rearDeltExercises:       [{ name: exercisePrefs.rearDelt,       sets: 3, reps: 12 }],
+        bicepExercises:          [{ name: exercisePrefs.bicep,          sets: 3, reps: 10 }],
+        compoundLegExercises:    [{ name: exercisePrefs.compoundLeg,    sets: 4, reps: 8  }],
+        quadExercises:           [{ name: exercisePrefs.quad,           sets: 3, reps: 10 }],
+        hamstringExercises:      [{ name: exercisePrefs.hamstring,      sets: 3, reps: 10 }],
+        gluteExercises:          [{ name: exercisePrefs.glute,          sets: 3, reps: 10 }],
+        calfExercises:           [{ name: exercisePrefs.calf,           sets: 3, reps: 15 }],
+      } : undefined;
+
       const response = await fetch(`${API_URL}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(profile),
+        body: JSON.stringify({ ...profile, preferredLiftExercises }),
       });
 
       if (!response.ok) {
@@ -161,15 +208,25 @@ export default function App() {
     } else {
       return (
         <div
+          onClick={onClick}
           style={{
             background: liftColors[workout.liftType],
             padding: "6px",
             borderRadius: "4px",
             fontSize: "11px",
             textAlign: "center",
+            cursor: onClick ? "pointer" : "default",
+            transition: "transform 0.2s",
           }}
+          onMouseEnter={(e) => onClick && (e.currentTarget.style.transform = "scale(1.05)")}
+          onMouseLeave={(e) => onClick && (e.currentTarget.style.transform = "scale(1)")}
         >
-          <div>{workout.liftType}</div>
+          <div style={{ textTransform: "capitalize" }}>{workout.liftType}</div>
+          {workout.exercises?.length > 0 && (
+            <div style={{ fontSize: "9px", opacity: 0.7, marginTop: "2px" }}>
+              {workout.exercises.length} exercises
+            </div>
+          )}
         </div>
       );
     }
@@ -312,8 +369,136 @@ export default function App() {
     );
   };
 
+  const liftTips: Record<string, string> = {
+    push: "Focus on chest, shoulders, and triceps. Control the eccentric (lowering) phase for maximum stimulus.",
+    pull: "Focus on back and biceps. Initiate each pull from the lats, not the arms.",
+    legs: "Prioritize full range of motion on squats and deadlifts. Don't skip the posterior chain.",
+    upper: "Balanced push/pull ratio. Aim for roughly equal volume on each to protect shoulder health.",
+  };
+
+  const LiftDetailModal = ({ workout, onClose }: { workout: any; onClose: () => void }) => {
+    if (!workout || workout.type !== "lift") return null;
+
+    return (
+      <div
+        onClick={onClose}
+        style={{
+          position: "fixed",
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0, 0, 0, 0.8)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000,
+          padding: "20px",
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            background: "#1e293b",
+            borderRadius: "12px",
+            padding: "32px",
+            maxWidth: "600px",
+            width: "100%",
+            maxHeight: "80vh",
+            overflowY: "auto",
+          }}
+        >
+          <button
+            onClick={onClose}
+            style={{
+              float: "right",
+              background: "transparent",
+              border: "none",
+              color: "#94a3b8",
+              fontSize: "24px",
+              cursor: "pointer",
+              padding: "0 8px",
+            }}
+          >
+            ×
+          </button>
+
+          <div style={{ marginBottom: "24px" }}>
+            <div
+              style={{
+                display: "inline-block",
+                padding: "6px 12px",
+                background: liftColors[workout.liftType],
+                borderRadius: "6px",
+                fontSize: "12px",
+                fontWeight: 600,
+                marginBottom: "12px",
+                textTransform: "uppercase",
+              }}
+            >
+              {workout.liftType}
+            </div>
+            <h2 style={{ margin: "0 0 4px 0", fontSize: "28px", textTransform: "capitalize" }}>
+              {workout.liftType} Day
+            </h2>
+            {workout.exercises?.length > 0 && (
+              <div style={{ color: "#94a3b8", fontSize: "14px" }}>
+                {workout.exercises.length} exercises
+              </div>
+            )}
+          </div>
+
+          {workout.exercises && workout.exercises.length > 0 ? (
+            <div>
+              <h3 style={{ fontSize: "16px", marginBottom: "12px", color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                Exercises
+              </h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                {workout.exercises.map((ex: any, idx: number) => (
+                  <div
+                    key={idx}
+                    style={{
+                      background: "#0f172a",
+                      padding: "14px 16px",
+                      borderRadius: "8px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      borderLeft: `3px solid ${liftColors[workout.liftType]}`,
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, fontSize: "15px" }}>{ex.name}</div>
+                    <div
+                      style={{
+                        background: "rgba(255,255,255,0.08)",
+                        padding: "4px 12px",
+                        borderRadius: "20px",
+                        fontSize: "13px",
+                        color: "#94a3b8",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {ex.sets} × {ex.reps}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div style={{ background: "#0f172a", padding: "20px", borderRadius: "8px", color: "#94a3b8", textAlign: "center" }}>
+              No exercise details available for this session.
+            </div>
+          )}
+
+          <div style={{ marginTop: "24px", padding: "16px", background: "#0f172a", borderRadius: "8px" }}>
+            <div style={{ fontSize: "14px", fontWeight: 600, marginBottom: "8px" }}>💡 Tips</div>
+            <div style={{ fontSize: "14px", color: "#94a3b8", lineHeight: 1.6 }}>
+              {liftTips[workout.liftType] ?? "Focus on form and controlled movement throughout each set."}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div style={{ minHeight: "100vh", background: "#0f172a", padding: "20px", color: "#fff" }}>
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
         
         <h1 style={{ textAlign: "center", marginBottom: "40px" }}>Training Plan Generator</h1>
@@ -563,6 +748,127 @@ export default function App() {
           </div>
         </div>
 
+        {/* Exercise Preferences (only shown when lifting) */}
+        {profile.liftDaysPerWeek > 0 && (
+          <div style={{ marginBottom: "24px" }}>
+            <button
+              onClick={() => setShowExercisePrefs(p => !p)}
+              style={{
+                width: "100%",
+                padding: "14px 20px",
+                background: "#1e293b",
+                border: "1px solid #334155",
+                borderRadius: showExercisePrefs ? "12px 12px 0 0" : "12px",
+                color: "#fff",
+                fontSize: "14px",
+                fontWeight: 600,
+                cursor: "pointer",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <span>⚙️ Exercise Preferences</span>
+              <span style={{ color: "#94a3b8", fontSize: "12px" }}>
+                {showExercisePrefs ? "▲ collapse" : "▼ expand"}
+              </span>
+            </button>
+
+            {showExercisePrefs && (
+              <div style={{
+                background: "#1e293b",
+                border: "1px solid #334155",
+                borderTop: "1px solid #0f172a",
+                borderRadius: "0 0 12px 12px",
+                padding: "20px",
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                gap: "24px",
+              }}>
+                {/* Push */}
+                <div>
+                  <div style={{ fontSize: "12px", fontWeight: 700, color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "12px", paddingBottom: "6px", borderBottom: "1px solid #334155" }}>
+                    Push
+                  </div>
+                  {([
+                    ["primaryChest",   "Primary Chest"],
+                    ["secondaryChest", "Secondary Chest"],
+                    ["frontDelt",      "Front Delts"],
+                    ["lateralDelt",    "Lateral Delts"],
+                    ["tricep",         "Triceps"],
+                  ] as [MuscleGroup, string][]).map(([key, label]) => (
+                    <label key={key} style={{ display: "block", marginBottom: "10px" }}>
+                      <div style={{ fontSize: "12px", color: "#94a3b8", marginBottom: "4px" }}>{label}</div>
+                      <select
+                        value={exercisePrefs[key]}
+                        onChange={e => setExercisePrefs(p => ({ ...p, [key]: e.target.value }))}
+                        style={{ width: "100%", padding: "7px 8px", background: "#0f172a", border: "1px solid #334155", borderRadius: "6px", color: "#fff", fontSize: "13px" }}
+                      >
+                        {EXERCISE_OPTIONS[key].map(name => (
+                          <option key={name} value={name}>{name}</option>
+                        ))}
+                      </select>
+                    </label>
+                  ))}
+                </div>
+
+                {/* Pull */}
+                <div>
+                  <div style={{ fontSize: "12px", fontWeight: 700, color: "#8b5cf6", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "12px", paddingBottom: "6px", borderBottom: "1px solid #334155" }}>
+                    Pull
+                  </div>
+                  {([
+                    ["lat",     "Lats"],
+                    ["midBack", "Mid Back"],
+                    ["rearDelt","Rear Delts"],
+                    ["bicep",   "Biceps"],
+                  ] as [MuscleGroup, string][]).map(([key, label]) => (
+                    <label key={key} style={{ display: "block", marginBottom: "10px" }}>
+                      <div style={{ fontSize: "12px", color: "#94a3b8", marginBottom: "4px" }}>{label}</div>
+                      <select
+                        value={exercisePrefs[key]}
+                        onChange={e => setExercisePrefs(p => ({ ...p, [key]: e.target.value }))}
+                        style={{ width: "100%", padding: "7px 8px", background: "#0f172a", border: "1px solid #334155", borderRadius: "6px", color: "#fff", fontSize: "13px" }}
+                      >
+                        {EXERCISE_OPTIONS[key].map(name => (
+                          <option key={name} value={name}>{name}</option>
+                        ))}
+                      </select>
+                    </label>
+                  ))}
+                </div>
+
+                {/* Legs */}
+                <div>
+                  <div style={{ fontSize: "12px", fontWeight: 700, color: "#ec4899", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "12px", paddingBottom: "6px", borderBottom: "1px solid #334155" }}>
+                    Legs
+                  </div>
+                  {([
+                    ["compoundLeg", "Compound"],
+                    ["quad",        "Quads"],
+                    ["hamstring",   "Hamstrings"],
+                    ["glute",       "Glutes"],
+                    ["calf",        "Calves"],
+                  ] as [MuscleGroup, string][]).map(([key, label]) => (
+                    <label key={key} style={{ display: "block", marginBottom: "10px" }}>
+                      <div style={{ fontSize: "12px", color: "#94a3b8", marginBottom: "4px" }}>{label}</div>
+                      <select
+                        value={exercisePrefs[key]}
+                        onChange={e => setExercisePrefs(p => ({ ...p, [key]: e.target.value }))}
+                        style={{ width: "100%", padding: "7px 8px", background: "#0f172a", border: "1px solid #334155", borderRadius: "6px", color: "#fff", fontSize: "13px" }}
+                      >
+                        {EXERCISE_OPTIONS[key].map(name => (
+                          <option key={name} value={name}>{name}</option>
+                        ))}
+                      </select>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Generate Button */}
         <div style={{ textAlign: "center", marginBottom: "32px" }}>
           {!isValid && (
@@ -601,6 +907,13 @@ export default function App() {
           <WorkoutDetailModal
             workout={selectedWorkout}
             onClose={() => setSelectedWorkout(null)}
+          />
+        )}
+
+        {selectedLift && (
+          <LiftDetailModal
+            workout={selectedLift}
+            onClose={() => setSelectedLift(null)}
           />
         )}
 
@@ -652,7 +965,11 @@ export default function App() {
                                     <WorkoutCard 
                                       key={idx} 
                                       workout={w}
-                                      onClick={w.type === "run" ? () => setSelectedWorkout(w) : undefined}
+                                      onClick={
+                                        w.type === "run" ? () => setSelectedWorkout(w) :
+                                        w.type === "lift" ? () => setSelectedLift(w) :
+                                        undefined
+                                      }
                                     />
                                   ))}
                                 </div>
@@ -682,7 +999,11 @@ export default function App() {
                             <WorkoutCard 
                               key={idx} 
                               workout={w}
-                              onClick={w.type === "run" ? () => setSelectedWorkout(w) : undefined}
+                              onClick={
+                                w.type === "run" ? () => setSelectedWorkout(w) :
+                                w.type === "lift" ? () => setSelectedLift(w) :
+                                undefined
+                              }
                             />
                           ))}
                         </div>
@@ -695,6 +1016,5 @@ export default function App() {
           </div>
         )}
       </div>
-    </div>
   );
 }

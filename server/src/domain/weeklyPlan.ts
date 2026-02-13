@@ -1,5 +1,11 @@
 export type RunType = "easy" | "workout" | "long";
-export type LiftType = "push" | "pull" | "legs" | "full-body" | "upper";
+export type LiftType = "push" | "pull" | "legs" | "upper";
+export type Exercise = {
+  name: string;
+  sets: number;
+  reps: number;
+  unit?: "reps" | "seconds" | "meters";
+};
 
 export interface RunWorkout {
   type: "run";
@@ -13,6 +19,7 @@ export interface RunWorkout {
 export interface LiftWorkout {
   type: "lift";
   liftType: LiftType;
+  exercises?: Exercise[];
 }
 
 export type Workout = RunWorkout | LiftWorkout;

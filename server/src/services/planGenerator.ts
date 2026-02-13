@@ -1,5 +1,6 @@
 import { FitnessProfile } from "../domain/fitnessProfile";
-import { DailyPlan, WeeklyPlan, RunWorkout, LiftType } from "../domain/weeklyPlan";
+import { DailyPlan, WeeklyPlan, RunWorkout, LiftType, LiftWorkout } from "../domain/weeklyPlan";
+import { generateLiftDetails } from "./liftDetailGenerator";
 
 // --------------------------------
 // Public API
@@ -420,6 +421,14 @@ function assignLiftWorkouts(days: DailyPlan[], profile: FitnessProfile): void {
           : w
       );
     });
+  }
+
+  // Generate exercise details for all assigned lifts
+  for (const day of days) {
+    let liftWorkout = day.workouts.find(w => w.type === "lift") as (LiftWorkout | undefined);
+    if (liftWorkout) {
+      generateLiftDetails(profile, liftWorkout);
+    }
   }
 }
 

@@ -12,8 +12,6 @@ export const FitnessProfileSchema = z.object({
 
   currentWeeklyMileage: z.number().min(0).max(200),
 
-  liftingExperience: z.enum(["beginner", "intermediate", "advanced"]),
-
   runDaysPerWeek: z.number().int().min(0).max(6),
 
   liftDaysPerWeek: z.number().int().min(0).max(6),
@@ -64,4 +62,132 @@ export const FitnessProfileSchema = z.object({
     thresholdRun: z.number().min(1).max(20),
     intervalRun: z.number().min(1).max(20),
   }).optional(),
+  preferredLiftExercises: z.object({
+    primaryChestExercises: z.array(
+      z.object({
+        name: z.string(),
+        sets: z.number().int().min(1).max(10),
+        reps: z.number().int().min(1).max(20),
+        unit: z.enum(["reps", "seconds", "meters"]).optional(),
+      })      ).optional(),
+    secondaryChestExercises: z.array(
+      z.object({
+        name: z.string(),
+        sets: z.number().int().min(1).max(10),
+        reps: z.number().int().min(1).max(20),
+        unit: z.enum(["reps", "seconds", "meters"]).optional(),
+      })      ).optional(),
+    frontDeltExercises: z.array(
+      z.object({
+        name: z.string(),
+        sets: z.number().int().min(1).max(10),
+        reps: z.number().int().min(1).max(20),
+        unit: z.enum(["reps", "seconds", "meters"]).optional(),
+      })      ).optional(),
+    lateralDeltExercises: z.array(
+      z.object({
+        name: z.string(),
+        sets: z.number().int().min(1).max(10),
+        reps: z.number().int().min(1).max(20),
+        unit: z.enum(["reps", "seconds", "meters"]).optional(),
+      })      ).optional(),
+    tricepExercises: z.array(
+      z.object({
+        name: z.string(),
+        sets: z.number().int().min(1).max(10),
+        reps: z.number().int().min(1).max(20),
+        unit: z.enum(["reps", "seconds", "meters"]).optional(),
+      })      ).optional(),
+    latExercises: z.array(
+      z.object({
+        name: z.string(),
+        sets: z.number().int().min(1).max(10),
+        reps: z.number().int().min(1).max(20),
+        unit: z.enum(["reps", "seconds", "meters"]).optional(),
+      })      ).optional(),
+    midBackExercises: z.array(
+      z.object({
+        name: z.string(),
+        sets: z.number().int().min(1).max(10),
+        reps: z.number().int().min(1).max(20),
+        unit: z.enum(["reps", "seconds", "meters"]).optional(),
+      })      ).optional(),
+    rearDeltExercises: z.array(
+      z.object({
+        name: z.string(),
+        sets: z.number().int().min(1).max(10),
+        reps: z.number().int().min(1).max(20),
+        unit: z.enum(["reps", "seconds", "meters"]).optional(),
+      })      ).optional(),
+    bicepExercises: z.array(
+      z.object({
+        name: z.string(),
+        sets: z.number().int().min(1).max(10),
+        reps: z.number().int().min(1).max(20),
+        unit: z.enum(["reps", "seconds", "meters"]).optional(),
+      })      ).optional(),
+    compoundLegExercises: z.array(
+      z.object({
+        name: z.string(),
+        sets: z.number().int().min(1).max(10),
+        reps: z.number().int().min(1).max(20),
+        unit: z.enum(["reps", "seconds", "meters"]).optional(),
+      })      ).optional(),
+    quadExercises: z.array(
+      z.object({
+        name: z.string(),
+        sets: z.number().int().min(1).max(10),
+        reps: z.number().int().min(1).max(20),
+        unit: z.enum(["reps", "seconds", "meters"]).optional(),
+      })      ).optional(),
+    hamstringExercises: z.array(
+      z.object({
+        name: z.string(),
+        sets: z.number().int().min(1).max(10),
+        reps: z.number().int().min(1).max(20),
+        unit: z.enum(["reps", "seconds", "meters"]).optional(),
+      })      ).optional(),
+    gluteExercises: z.array(
+      z.object({
+        name: z.string(),
+        sets: z.number().int().min(1).max(10),
+        reps: z.number().int().min(1).max(20),
+        unit: z.enum(["reps", "seconds", "meters"]).optional(),
+      })      ).optional(),
+    calfExercises: z.array(
+      z.object({
+        name: z.string(),
+        sets: z.number().int().min(1).max(10),
+        reps: z.number().int().min(1).max(20),
+        unit: z.enum(["reps", "seconds", "meters"]).optional(),
+      })      ).optional(),
+    antiExtensionCoreExercises: z.array(
+      z.object({
+        name: z.string(),
+        sets: z.number().int().min(1).max(10),
+        reps: z.number().int().min(1).max(20),
+        unit: z.enum(["reps", "seconds", "meters"]).optional(),
+      })      ).optional(),
+    antiRotationCoreExercises: z.array(
+      z.object({
+        name: z.string(),
+        sets: z.number().int().min(1).max(10),
+        reps: z.number().int().min(1).max(20),
+        unit: z.enum(["reps", "seconds", "meters"]).optional(),
+      })      ).optional(),
+    antiLateralFlexionCoreExercises: z.array(
+      z.object({
+        name: z.string(),
+        sets: z.number().int().min(1).max(10),
+        reps: z.number().int().min(1).max(20),
+        unit: z.enum(["reps", "seconds", "meters"]).optional(),
+      })      ).optional(),
+    trunkFlexionCoreExercises: z.array(
+      z.object({
+        name: z.string(),
+        sets: z.number().int().min(1).max(10),
+        reps: z.number().int().min(1).max(20),
+        unit: z.enum(["reps", "seconds", "meters"]).optional(),
+      })      ).optional(),
+  }).optional() 
 }) satisfies z.ZodType<FitnessProfile>;

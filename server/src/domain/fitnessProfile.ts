@@ -1,7 +1,7 @@
 import { paceChart } from "./paceChart";
+import { Exercise } from "./weeklyPlan";
 
 export type RunningLevel = "beginner" | "intermediate" | "advanced";
-export type LiftingLevel = "beginner" | "intermediate" | "advanced";
 export type Goal = "general" | "5k" | "10k" | "half-marathon" | "marathon" | "strength";
 export type Sex = "male" | "female";
 export type weekType = "B" | "D" | "T";
@@ -12,7 +12,6 @@ export interface FitnessProfile {
   runningLevel: RunningLevel;
   startingWeeklyMileage: number;
   currentWeeklyMileage: number;
-  liftingExperience: LiftingLevel;
   runDaysPerWeek: number;
   liftDaysPerWeek: number;
   longRunDay: number;
@@ -30,4 +29,24 @@ export interface FitnessProfile {
     timeMinutes: number;
   };
   paceChart?: paceChart;
+  preferredLiftExercises?: {
+    primaryChestExercises?: Exercise[];
+    secondaryChestExercises?: Exercise[];
+    frontDeltExercises?: Exercise[];
+    lateralDeltExercises?: Exercise[];
+    tricepExercises?: Exercise[];
+    latExercises?: Exercise[];
+    midBackExercises?: Exercise[];
+    rearDeltExercises?: Exercise[];
+    bicepExercises?: Exercise[];
+    compoundLegExercises?: Exercise[];
+    quadExercises?: Exercise[];
+    hamstringExercises?: Exercise[];
+    gluteExercises?: Exercise[];
+    calfExercises?: Exercise[];
+    antiExtensionCoreExercises?: Exercise[]; 
+    antiRotationCoreExercises?: Exercise[];
+    antiLateralFlexionCoreExercises?: Exercise[];
+    trunkFlexionCoreExercises?: Exercise[];
+  };
 }
