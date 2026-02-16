@@ -61,34 +61,35 @@ function selectExercise(preferredExercises: Exercise[] | undefined, defaultExerc
 
 // Push Day Exercises
 const primaryChestExercises: Exercise[] = [
+    { name: "Incline Dumbbell Bench Press", sets: 4, reps: 8 },
     { name: "Barbell Bench Press", sets: 4, reps: 8 },
     { name: "Incline Barbell Bench Press", sets: 4, reps: 8 },
     { name: "Dumbbell Bench Press", sets: 4, reps: 8 },
-    { name: "Incline Dumbbell Bench Press", sets: 4, reps: 8 },
     { name: "Machine Chest Press", sets: 4, reps: 8 },
 ];
 
 const secondaryChestExercises: Exercise[] = [
-    { name: "Dumbbell Chest Flyes", sets: 3, reps: 12 },
     { name: "Cable Chest Flyes", sets: 3, reps: 12 },
+    { name: "Dumbbell Chest Flyes", sets: 3, reps: 12 },
     { name: "Machine Chest Flyes", sets: 3, reps: 12 },
     { name: "Push-Ups", sets: 3, reps: 20 },
 ];
 
 const frontDeltExercises: Exercise[] = [
+    { name: "Dumbbell Shoulder Press", sets: 3, reps: 10 },
     { name: "Standing Overhead Press", sets: 4, reps: 8 },
-    { name: "Dumbbell Shoulder Press", sets: 3, reps: 10 }
+    { name: "Front Delt Raises", sets: 3, reps: 12 },
 ];
 
 const lateralDeltExercises: Exercise[] = [
+    { name: "Cable Lateral Raises", sets: 3, reps: 10 },
     { name: "Dumbbell Lateral Raises", sets: 3, reps: 12 },
-    { name: "Cable Lateral Raises", sets: 3, reps: 10 }
 ];
 
 const tricepExercises: Exercise[] = [
+    { name: "Tricep Pushdowns", sets: 3, reps: 10 },
     { name: "Tricep Dips", sets: 4, reps: 8 },
     { name: "Overhead Tricep Extension", sets: 3, reps: 10 },
-    { name: "Tricep Pushdowns", sets: 3, reps: 10 },
     { name: "Skull Crushers", sets: 3, reps: 10 }
 ];
 
@@ -114,9 +115,9 @@ const rearDeltExercises: Exercise[] = [
 ];
 
 const bicepExercises: Exercise[] = [
-    { name: "Barbell Curls", sets: 3, reps: 10 },
-    { name: "Hammer Curls", sets: 3, reps: 10 },
     { name: "Dumbbell Curls", sets: 3, reps: 10 },
+    { name: "Barbell Curls", sets: 3, reps: 10 },
+    { name: "Cable Curls", sets: 3, reps: 10 },
     { name: "Preacher Curls", sets: 3, reps: 10 }
 ];
 
@@ -144,7 +145,6 @@ const gluteExercises: Exercise[] = [
     { name: "Hip Thrusts", sets: 3, reps: 10 },
     { name: "Glute Bridges", sets: 3, reps: 12 },
     { name: "Hip Abductions", sets: 3, reps: 15 },
-    { name: "Hip Adductions", sets: 3, reps: 15 }
 ];
 
 const calfExercises: Exercise[] = [

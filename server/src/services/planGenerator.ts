@@ -303,9 +303,17 @@ function assignLiftWorkouts(days: DailyPlan[], profile: FitnessProfile): void {
     totalLiftDays -= 1;
   }
 
-  const maxLowerDays =
-    profile.goal === "marathon" ? 2 :
-    totalLiftDays >= 4 ? Math.floor(totalLiftDays / 2) : 1;
+  let maxLowerDays;
+  if (profile.liftDaysPerWeek >= 4) {
+    maxLowerDays = 2;
+  } else {
+    maxLowerDays = 1;
+  }
+  if (profile.goal === "5k" || profile.goal === "10k" 
+    || profile.goal === "half-marathon" || profile.goal === "marathon") {
+      maxLowerDays = Math.min(maxLowerDays, 1);
+      totalLiftDays = Math.min(totalLiftDays, 3);
+  }
 
   let liftsAssigned = 0;
   let lowerAssigned = 0;
@@ -324,39 +332,24 @@ function assignLiftWorkouts(days: DailyPlan[], profile: FitnessProfile): void {
     });
 
   // PHASE 1: Assign all leg days first
-  for (const currentDay of eligibleLiftDays) {
+  const legCandidates = eligibleLiftDays
+    .filter(day => {
+      // Hard constraints: no back-to-back leg days
+      const yesterdayLift = lastLiftTypeByDay[(day + 6) % 7] ?? null;
+      const twoDaysAgoLift = lastLiftTypeByDay[(day + 5) % 7] ?? null;
+      return yesterdayLift !== "legs" && twoDaysAgoLift !== "legs";
+    })
+    .map(day => ({ day, score: scoreLegDay(day, days) }))
+    .sort((a, b) => b.score - a.score);
+
+  for (const { day } of legCandidates) {
     if (lowerAssigned >= maxLowerDays) break;
     if (liftsAssigned >= totalLiftDays) break;
 
-    const dayBeforeLong =
-      hasLongRun &&
-      days[(currentDay + 1) % 7]?.workouts.some(
-        w => w.type === "run" && w.runType === "long"
-      );
-
-    const dayBeforeWorkout =
-      days[(currentDay + 1) % 7]?.workouts.some(
-        w => w.type === "run" && w.runType === "workout"
-      );
-
-    const yesterdayLift = lastLiftTypeByDay[(currentDay + 6) % 7] ?? null;
-    const twoDaysAgoLift = lastLiftTypeByDay[(currentDay + 5) % 7] ?? null;
-
-    const canAssignLower =
-      !dayBeforeLong &&
-      !dayBeforeWorkout &&
-      yesterdayLift !== "legs" &&
-      twoDaysAgoLift !== "legs";
-
-    if (canAssignLower) {
-      days[currentDay].workouts.push({
-        type: "lift",
-        liftType: "legs",
-      });
-      lastLiftTypeByDay[currentDay] = "legs";
-      lowerAssigned++;
-      liftsAssigned++;
-    }
+    days[day].workouts.push({ type: "lift", liftType: "legs" });
+    lastLiftTypeByDay[day] = "legs";
+    lowerAssigned++;
+    liftsAssigned++;
   }
 
   // PHASE 2: Assign push/pull for remaining days
@@ -536,6 +529,43 @@ function validateDayArray(days: number[], label: string): void {
 // --------------------------------
 // Utilities
 // --------------------------------
+function scoreLegDay(day: number, days: DailyPlan[]): number {
+  // Function to score candidates on how good of a fit a leg day would be
+  let score = 0;
+
+  const runsToday = days[day].workouts.filter(w => w.type === "run");
+  const hasWorkoutRunToday = runsToday.some(w => w.runType === "workout");
+  const hasAnyRunToday = runsToday.length > 0;
+
+  const prevDay = (day + 6) % 7;
+  const prevRuns = days[prevDay].workouts.filter(w => w.type === "run");
+  const prevDayHadLong    = prevRuns.some(w => w.runType === "long");
+  const prevDayHadWorkout = prevRuns.some(w => w.runType === "workout");
+
+  const nextDay = (day + 1) % 7;
+  const nextRuns = days[nextDay].workouts.filter(w => w.type === "run");
+  const nextDayHasLong    = nextRuns.some(w => w.runType === "long");
+  const nextDayHasWorkout = nextRuns.some(w => w.runType === "workout");
+
+  // Scoring rationale:
+  // Legs on a workout run day = best: both sessions are hard, fatigue is consolidated
+  // Legs on any run day = okay: at least it's not a surprise standalone
+  // Day after long run = bad: legs are already trashed from 18+ miles
+  // Day after workout run = mildly bad: some residual fatigue
+  // Day before long run = very bad: DOMS will directly hurt the most important run
+  // Day before workout run = bad: DOMS will hurt quality work
+
+  if (hasWorkoutRunToday) score += 3;
+  else if (hasAnyRunToday) score += 1;
+
+  if (prevDayHadLong)    score -= 3;
+  if (prevDayHadWorkout) score -= 1;
+  if (nextDayHasLong)    score -= 3;
+  if (nextDayHasWorkout) score -= 2;
+
+  return score;
+}
+
 export function roundToNearestQuarter(num: number): number {
   return Math.round(num * 4) / 4;
 }
