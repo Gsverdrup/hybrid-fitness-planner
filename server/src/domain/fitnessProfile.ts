@@ -2,7 +2,7 @@ import { paceChart } from "./paceChart";
 import { Exercise } from "./weeklyPlan";
 
 export type RunningLevel = "beginner" | "intermediate" | "advanced";
-export type Goal = "general" | "5k" | "10k" | "half-marathon" | "marathon" | "strength";
+export type Goal = "5k" | "10k" | "half-marathon" | "marathon";
 export type Sex = "male" | "female";
 export type weekType = "B" | "D" | "T";
 

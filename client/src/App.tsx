@@ -538,12 +538,10 @@ export default function App() {
                 onChange={e => setProfile({...profile, goal: e.target.value})}
                 style={{ width: "100%", padding: "8px", background: "#0f172a", border: "1px solid #334155", borderRadius: "6px", color: "#fff" }}
               >
-                <option value="general">General</option>
                 <option value="5k">5k</option>
                 <option value="10k">10k</option>
                 <option value="half-marathon">Half Marathon</option>
                 <option value="marathon">Marathon</option>
-                <option value="strength">Strength</option>
               </select>
             </label>
 

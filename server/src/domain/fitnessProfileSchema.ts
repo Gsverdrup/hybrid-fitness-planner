@@ -27,12 +27,10 @@ export const FitnessProfileSchema = z.object({
   ).max(7),
 
   goal: z.enum([
-    "general",
     "5k",
     "10k",
     "half-marathon",
     "marathon",
-    "strength",
   ]),
 
   peakLongRunLength: z.number().min(0).max(30).optional(),
