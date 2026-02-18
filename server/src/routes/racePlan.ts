@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
-import { generateMarathonPlan, generateHalfMarathonPlan, generate10kPlan, generate5kPlan } from "../services/racePlanGenerator";
+import { generateMarathonPlan, generateHalfMarathonPlan, generate10kPlan, generate5kPlan } from "../logic/plans/racePlanGenerator";
 import { FitnessProfile } from "../domain/fitnessProfile";
-import { FitnessProfileSchema } from "../domain/fitnessProfileSchema";
+import { FitnessProfileSchema } from "../validation/fitnessProfileSchema";
 
 const router = Router();
 

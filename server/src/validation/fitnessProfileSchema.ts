@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { FitnessProfile } from "./fitnessProfile";
+import type { FitnessProfile } from "../domain/fitnessProfile";
 
 export const FitnessProfileSchema = z.object({
   age: z.number().int().min(13).max(100),

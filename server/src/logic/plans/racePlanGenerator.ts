@@ -1,6 +1,6 @@
 import { generateWeeklyPlan, FitnessProfileError } from "./planGenerator";
-import { FitnessProfile, weekType } from "../domain/fitnessProfile";
-import { WeeklyPlan } from "../domain/weeklyPlan";
+import { FitnessProfile, weekType } from "../../domain/fitnessProfile";
+import { WeeklyPlan } from "../../domain/weeklyPlan";
 import { applyPacesToPlan } from "./paceCalculator";
 
 // ------------------------------------------------------------
