@@ -1,7 +1,6 @@
-import { th } from "zod/v4/locales";
 import { FitnessProfile } from "../../domain/fitnessProfile";
 import { DailyPlan, WeeklyPlan, RunWorkout, LiftType, LiftWorkout } from "../../domain/weeklyPlan";
-import { generateLiftDetails } from "./liftDetailGenerator";
+import { generateLiftDetails } from "../lifts/liftDetailGenerator";
 
 // --------------------------------
 // Public API

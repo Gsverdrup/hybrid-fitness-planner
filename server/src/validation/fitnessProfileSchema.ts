@@ -35,7 +35,7 @@ export const FitnessProfileSchema = z.object({
 
   peakLongRunLength: z.number().min(0).max(30).optional(),
 
-  trainingLengthWeeks: z.number().int().min(12).max(20),
+  trainingLengthWeeks: z.number().int().min(8).max(20),
 
   weeksUntilRace: z.number().int().min(0).max(20).optional(),
 

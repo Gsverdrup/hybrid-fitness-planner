@@ -1,6 +1,6 @@
-import { FitnessProfile } from "../domain/fitnessProfile";
-import { FitnessProfileError } from "./planGenerator";
-import { DailyPlan, WeeklyPlan } from "../domain/weeklyPlan";
+import { FitnessProfile } from "../../domain/fitnessProfile";
+import { FitnessProfileError } from "../plans/planGenerator";
+import { DailyPlan, WeeklyPlan } from "../../domain/weeklyPlan";
 import { generateRunSegments } from "./runDetailGenerator";
 
 const MILE_IN_KM = 1.60934;

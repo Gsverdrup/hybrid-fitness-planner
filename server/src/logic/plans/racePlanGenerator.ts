@@ -1,7 +1,7 @@
 import { generateWeeklyPlan, FitnessProfileError } from "./planGenerator";
 import { FitnessProfile, weekType } from "../../domain/fitnessProfile";
 import { WeeklyPlan } from "../../domain/weeklyPlan";
-import { applyPacesToPlan } from "./paceCalculator";
+import { applyPacesToPlan } from "../runs/paceCalculator";
 
 // ------------------------------------------------------------
 // MARATHON PLAN GENERATOR
@@ -14,10 +14,6 @@ export function generateMarathonPlan(profile: FitnessProfile): WeeklyPlan[] {
 
     if (profile.trainingLengthWeeks < 12 || profile.trainingLengthWeeks > 20) {
         throw new FitnessProfileError("Marathon training plans must be between 12 and 20 weeks.");
-    }
-
-    if (profile.startingWeeklyMileage < 15 && profile.trainingLengthWeeks < 16) {
-        throw new FitnessProfileError("For marathon plans shorter than 16 weeks, starting weekly mileage must be at least 15 miles.");
     }
 
     const weekPatternsByWeeks: Record<number, string> = {
@@ -236,10 +232,6 @@ export function generateHalfMarathonPlan(profile: FitnessProfile): WeeklyPlan[] 
         throw new FitnessProfileError("Half marathon training plans must be between 10 and 16 weeks.");
     }
 
-    if (profile.startingWeeklyMileage < 12 && profile.trainingLengthWeeks < 12) {
-        throw new FitnessProfileError("For half marathon plans shorter than 12 weeks, starting weekly mileage must be at least 12 miles.");
-    }
-
     // Week patterns - similar to marathon but shorter
     const weekPatternsByWeeks: Record<number, string> = {
         10: "BBBDBBBDTT",
@@ -434,10 +426,6 @@ export function generate10kPlan(profile: FitnessProfile): WeeklyPlan[] {
         throw new FitnessProfileError("10k training plans must be between 8 and 14 weeks.");
     }
 
-    if (profile.startingWeeklyMileage < 12 && profile.trainingLengthWeeks < 10) {
-        throw new FitnessProfileError("For 10k plans shorter than 10 weeks, starting weekly mileage must be at least 12 miles.");
-    }
-
     // Week patterns
     const weekPatternsByWeeks: Record<number, string> = {
         8: "BBBDBBBT",
@@ -613,10 +601,6 @@ export function generate5kPlan(profile: FitnessProfile): WeeklyPlan[] {
 
     if (profile.trainingLengthWeeks < 8 || profile.trainingLengthWeeks > 12) {
         throw new FitnessProfileError("5k training plans must be between 8 and 12 weeks.");
-    }
-
-    if (profile.startingWeeklyMileage < 10 && profile.trainingLengthWeeks < 10) {
-        throw new FitnessProfileError("For 5k plans shorter than 10 weeks, starting weekly mileage must be at least 10 miles.");
     }
 
     // Week patterns - more frequent workouts for speed development

@@ -1,0 +1,225 @@
+.plan-root {
+  min-height: 100vh;
+  background: #020617;
+  color: #e2e8f0;
+}
+
+.plan-header {
+  border-bottom: 1px solid #1e293b;
+  background: #0f172a;
+}
+
+.plan-header-inner {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.plan-eyebrow {
+  color: #67e8f9;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.75rem;
+}
+
+.plan-title {
+  margin: 0.25rem 0 0.5rem;
+}
+
+.plan-summary {
+  margin: 0;
+  color: #94a3b8;
+}
+
+.plan-header-actions {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+}
+
+.btn-outline {
+  border: 1px solid #334155;
+  background: transparent;
+  color: #e2e8f0;
+  border-radius: 999px;
+  padding: 0.55rem 0.9rem;
+  cursor: pointer;
+}
+
+.plan-weeks {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 1rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.week-card {
+  border: 1px solid #1e293b;
+  border-radius: 1rem;
+  padding: 1rem;
+  background: #0b1120;
+}
+
+.week-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.6rem;
+}
+
+.week-number {
+  font-weight: 700;
+}
+
+.week-theme,
+.week-miles {
+  font-size: 0.85rem;
+  border: 1px solid #334155;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  color: #93c5fd;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.day-cell {
+  border: 1px solid #1e293b;
+  border-radius: 0.65rem;
+  padding: 0.6rem;
+  background: #020617;
+  min-height: 150px;
+}
+
+.day-cell.rest {
+  opacity: 0.9;
+}
+
+.day-label {
+  font-weight: 600;
+  margin-bottom: 0.45rem;
+}
+
+.day-workouts {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.workout-chip-button {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.rest-pill {
+  display: inline-flex;
+  font-size: 0.78rem;
+  color: #94a3b8;
+  border: 1px dashed #334155;
+  border-radius: 999px;
+  padding: 0.15rem 0.45rem;
+}
+
+.workout-chip {
+  border: 1px solid #334155;
+  border-radius: 0.55rem;
+  padding: 0.45rem 0.5rem;
+  display: grid;
+  gap: 0.2rem;
+  font-size: 0.82rem;
+}
+
+.workout-chip strong {
+  font-size: 0.79rem;
+  color: #e2e8f0;
+}
+
+.workout-detail {
+  margin-top: 0.3rem;
+  padding: 0.45rem 0.5rem;
+  border: 1px solid #1e293b;
+  border-radius: 0.5rem;
+  background: #0f172a;
+  font-size: 0.78rem;
+  color: #cbd5e1;
+}
+
+.detail-list {
+  margin: 0;
+  padding-left: 1rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.repeat-count {
+  color: #06b6d4;
+  font-weight: 600;
+  margin-left: 0.3rem;
+}
+
+.workout-chip.run.easy {
+  border-color: #0f766e;
+  background: rgba(15, 118, 110, 0.16);
+}
+
+.workout-chip.run.workout {
+  border-color: #be123c;
+  background: rgba(190, 18, 60, 0.15);
+}
+
+.workout-chip.run.long {
+  border-color: #1d4ed8;
+  background: rgba(29, 78, 216, 0.16);
+}
+
+.workout-chip.lift.push,
+.workout-chip.lift.pull,
+.workout-chip.lift.upper,
+.workout-chip.lift.legs {
+  border-color: #7c3aed;
+  background: rgba(124, 58, 237, 0.16);
+}
+
+.plan-raw {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.plan-empty-grid {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  color: #94a3b8;
+}
+
+.plan-empty {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+}
+
+.plan-empty button {
+  border: none;
+  background: transparent;
+  color: #22d3ee;
+  cursor: pointer;
+}
+
+@media (max-width: 980px) {
+  .calendar-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

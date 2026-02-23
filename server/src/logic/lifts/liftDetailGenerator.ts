@@ -1,6 +1,6 @@
-import { Exercise, LiftWorkout } from "../domain/weeklyPlan";
-import { FitnessProfileError } from "./planGenerator";
-import { FitnessProfile } from "../domain/fitnessProfile";
+import { Exercise, LiftWorkout } from "../../domain/weeklyPlan";
+import { FitnessProfileError } from "../plans/planGenerator";
+import { FitnessProfile } from "../../domain/fitnessProfile";
 
 export function generateLiftDetails(profile: FitnessProfile, lift: LiftWorkout): void {
     const preferredExercises = profile.preferredLiftExercises;
@@ -125,6 +125,7 @@ const bicepExercises: Exercise[] = [
 const compoundLegExercises: Exercise[] = [
     { name: "Back Squats", sets: 4, reps: 8 },
     { name: "Leg Press", sets: 4, reps: 8 },
+    { name: "Hack Squats", sets: 4, reps: 8 },
     { name: "Bulgarian Split Squats", sets: 4, reps: 8 },
     { name: "Goblet Squats", sets: 4, reps: 8 }
 ];

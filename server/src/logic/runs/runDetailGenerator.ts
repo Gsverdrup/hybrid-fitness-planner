@@ -1,6 +1,6 @@
-import { RunWorkout } from "../domain/weeklyPlan";
-import { FitnessProfile } from "../domain/fitnessProfile";
-import { FitnessProfileError, roundToNearestQuarter } from "./planGenerator";
+import { RunWorkout } from "../../domain/weeklyPlan";
+import { FitnessProfile } from "../../domain/fitnessProfile";
+import { FitnessProfileError, roundToNearestQuarter } from "../plans/planGenerator";
 
 export function generateRunSegments(profile: FitnessProfile, run: RunWorkout, workoutType?: "classic-tempo" | "cruise-tempo" | "progressive-tempo" | "400m" | "800m" | "ladder", longRunType?: "easy" | "fast-finish" | "marathon-pace"): void {
     const paceChart = profile.paceChart;
