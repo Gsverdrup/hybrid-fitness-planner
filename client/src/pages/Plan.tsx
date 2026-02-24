@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { getCurrentPlan, type ServerGoal } from "../api/planApi";
 import "./PlanPage.css";
 
 type Goal = "5k" | "10k" | "half" | "marathon";
@@ -54,12 +55,64 @@ type LocationState = {
   goal?: Goal;
 };
 
+type CachedPlan = {
+  plan: PlanData;
+  goal?: Goal;
+  createdAt?: string;
+};
+
 export default function PlanPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const state = (location.state ?? {}) as LocationState;
-  const plan = state.plan;
-  const goal = state.goal;
+  const [plan, setPlan] = useState<PlanData | undefined>(state.plan);
+  const [goal, setGoal] = useState<Goal | undefined>(state.goal);
+  const [isLoadingPlan, setIsLoadingPlan] = useState(!state.plan);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadSavedPlan() {
+      if (state.plan) {
+        setIsLoadingPlan(false);
+        return;
+      }
+
+      try {
+        const current = await getCurrentPlan();
+        if (!isMounted) {
+          return;
+        }
+
+        setPlan(current.planJson);
+        setGoal(fromServerGoal(current.goal));
+      } catch {
+        if (isMounted) {
+          const cachedPlan = getCachedPlan();
+          setPlan(cachedPlan?.plan);
+          setGoal(cachedPlan?.goal);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingPlan(false);
+        }
+      }
+    }
+
+    void loadSavedPlan();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [state.goal, state.plan]);
+
+  if (isLoadingPlan) {
+    return (
+      <div className="plan-root plan-empty">
+        <p>Loading saved plan...</p>
+      </div>
+    );
+  }
 
   if (!plan) {
     return (
@@ -111,6 +164,34 @@ export default function PlanPage() {
       )}
     </div>
   );
+}
+
+function fromServerGoal(goal: ServerGoal): Goal {
+  switch (goal) {
+    case "half-marathon":
+      return "half";
+    default:
+      return goal;
+  }
+}
+
+function getCachedPlan(): CachedPlan | null {
+  const raw = localStorage.getItem("hf_last_plan");
+
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as CachedPlan;
+    if (typeof parsed !== "object" || parsed === null || !("plan" in parsed)) {
+      return null;
+    }
+
+    return parsed;
+  } catch {
+    return null;
+  }
 }
 
 function WeekCard({ week, index }: { week: CalendarWeek; index: number }) {

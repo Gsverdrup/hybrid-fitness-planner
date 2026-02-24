@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { GOAL_TO_SERVER_GOAL, generateRacePlan, savePlan } from "../api/planApi";
 import "./QuizPage.css";
 
 type Goal = "5k" | "10k" | "half" | "marathon";
@@ -342,22 +343,6 @@ const STEPS: Step[] = [
   },
 ];
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3001";
-
-const ENDPOINT_MAP: Record<Goal, string> = {
-  "5k": "/race-plan/5k",
-  "10k": "/race-plan/10k",
-  half: "/race-plan/half",
-  marathon: "/race-plan/marathon",
-};
-
-const GOAL_TO_SERVER_GOAL: Record<Goal, "5k" | "10k" | "half-marathon" | "marathon"> = {
-  "5k": "5k",
-  "10k": "10k",
-  half: "half-marathon",
-  marathon: "marathon",
-};
-
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -626,17 +611,6 @@ function parseRaceTimeToMinutes(hours?: number, minutes?: number, seconds?: numb
   }
 
   return resolvedHours * 60 + resolvedMinutes + resolvedSeconds / 60;
-}
-
-async function parseResponseSafely(response: Response): Promise<unknown> {
-  const text = await response.text();
-  if (!text) return null;
-
-  try {
-    return JSON.parse(text) as unknown;
-  } catch {
-    return text;
-  }
 }
 
 export default function QuizPage() {
@@ -934,7 +908,6 @@ export default function QuizPage() {
     setLoading(true);
     setError(null);
 
-    const endpoint = ENDPOINT_MAP[goal];
     const runDays = (Array.isArray(answers.runDays) ? answers.runDays : []).sort((a, b) => a - b);
     const runDaysPerWeek = clamp(runDays.length || Number(answers.daysPerWeek) || 4, 1, 6);
     const liftDays = answers.hasLiftPlan === "yes"
@@ -974,30 +947,31 @@ export default function QuizPage() {
     };
 
     try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const parsedBody = await parseResponseSafely(response);
-
-      if (!response.ok) {
-        const errorMessage =
-          typeof parsedBody === "object" && parsedBody !== null && "error" in parsedBody
-            ? String((parsedBody as { error?: string }).error || "")
-            : typeof parsedBody === "string"
-            ? parsedBody
-            : "Failed to generate plan.";
-
-        throw new Error(errorMessage || "Failed to generate plan.");
-      }
+      const parsedBody = await generateRacePlan(goal, payload);
 
       if (!parsedBody || typeof parsedBody !== "object") {
         throw new Error("Plan generation returned an unexpected response.");
       }
 
       const plan = parsedBody as Record<string, unknown>;
+      localStorage.setItem(
+        "hf_last_plan",
+        JSON.stringify({
+          plan,
+          goal,
+          createdAt: new Date().toISOString(),
+        })
+      );
+
+      try {
+        await savePlan({
+          goal: GOAL_TO_SERVER_GOAL[goal],
+          profileSnapshot: payload,
+          plan,
+          planType: "race",
+        });
+      } catch {}
+
       navigate("/plan", { state: { plan, goal } });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to generate plan.");

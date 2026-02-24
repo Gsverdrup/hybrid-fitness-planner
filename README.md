@@ -47,3 +47,27 @@ npm run dev
 cd ../client
 npm install
 npm run dev
+```
+
+## 🔐 Auth + Plan Persistence Setup
+
+Create `server/.env` with:
+
+```bash
+PGUSER=postgres
+PGHOST=localhost
+PGDATABASE=hybrid_fitness_planner
+PGPASSWORD=your_password
+PGPORT=5432
+JWT_SECRET=replace-with-a-long-random-secret
+CLIENT_ORIGIN=http://localhost:5173
+NODE_ENV=development
+```
+
+Run the SQL migration in `server/sql/001_auth_and_plans.sql` against your Postgres database.
+
+Optional client env (`client/.env`):
+
+```bash
+VITE_API_BASE_URL=http://localhost:3001
+```

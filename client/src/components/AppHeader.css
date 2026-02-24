@@ -1,0 +1,37 @@
+.app-header {
+  border-bottom: 1px solid #1e293b;
+  background: #0b1120;
+  color: #e2e8f0;
+  padding: 0.8rem 1rem;
+}
+
+.app-header-nav {
+  max-width: 1120px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.app-header-brand {
+  color: #67e8f9;
+  text-decoration: none;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.app-header-links {
+  display: flex;
+  gap: 0.9rem;
+}
+
+.app-header-link {
+  color: #e2e8f0;
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+
+.app-header-link:hover,
+.app-header-brand:hover {
+  text-decoration: underline;
+}
