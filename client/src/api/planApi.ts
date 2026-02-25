@@ -51,7 +51,11 @@ async function parseResponseSafely(response: Response): Promise<unknown> {
 function extractErrorMessage(parsedBody: unknown, fallback: string): string {
 	if (typeof parsedBody === "object" && parsedBody !== null && "error" in parsedBody) {
 		const errorValue = (parsedBody as { error?: unknown }).error;
+		const detailValue = "details" in parsedBody ? (parsedBody as { details?: unknown }).details : undefined;
 		if (typeof errorValue === "string" && errorValue.trim()) {
+			if (typeof detailValue === "string" && detailValue.trim()) {
+				return `${errorValue} ${detailValue}`;
+			}
 			return errorValue;
 		}
 	}
@@ -104,8 +108,8 @@ export async function logout(): Promise<void> {
 	await request("/auth/logout", { method: "POST" });
 }
 
-export async function getCurrentUser(): Promise<AuthUser> {
-	const parsed = (await request("/auth/me", { method: "GET" })) as { user: AuthUser };
+export async function getCurrentUser(): Promise<AuthUser | null> {
+	const parsed = (await request("/auth/me", { method: "GET" })) as { user: AuthUser | null };
 	return parsed.user;
 }
 
@@ -135,11 +139,20 @@ export async function savePlan(input: {
 	return parsed.plan;
 }
 
-export async function getCurrentPlan(goal?: ServerGoal): Promise<SavedPlan> {
+export async function getCurrentPlan(goal?: ServerGoal): Promise<SavedPlan | null> {
 	const query = goal ? `?goal=${encodeURIComponent(goal)}` : "";
-	const parsed = (await request(`/plans/current${query}`, {
-		method: "GET",
-	})) as { plan: SavedPlan };
 
-	return parsed.plan;
+	try {
+		const parsed = (await request(`/plans/current${query}`, {
+			method: "GET",
+		})) as { plan: SavedPlan | null };
+
+		return parsed.plan;
+	} catch (error) {
+		if (error instanceof Error && error.message === "No saved plan found.") {
+			return null;
+		}
+
+		throw error;
+	}
 }

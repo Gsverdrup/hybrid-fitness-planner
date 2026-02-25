@@ -1,8 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { clearSessionCookie, setSessionCookie, signSession } from "../auth/session";
-import { requireAuth } from "../middleware/requireAuth";
+import { clearSessionCookie, getSessionCookieName, setSessionCookie, signSession, verifySession } from "../auth/session";
 import { createUser, findUserByEmail, findUserById } from "../repositories/userRepository";
 
 const router = Router();
@@ -85,13 +84,25 @@ router.post("/logout", (_req, res) => {
   res.status(204).send();
 });
 
-router.get("/me", requireAuth, async (req, res) => {
+router.get("/me", async (req, res) => {
+  const rawToken = req.cookies?.[getSessionCookieName()];
+
+  if (typeof rawToken !== "string" || !rawToken) {
+    return res.json({ user: null });
+  }
+
+  const payload = verifySession(rawToken);
+  if (!payload?.userId) {
+    clearSessionCookie(res);
+    return res.json({ user: null });
+  }
+
   try {
-    const user = await findUserById(req.userId as string);
+    const user = await findUserById(payload.userId);
 
     if (!user) {
       clearSessionCookie(res);
-      return res.status(401).json({ error: "Session is no longer valid." });
+      return res.json({ user: null });
     }
 
     return res.json({ user });

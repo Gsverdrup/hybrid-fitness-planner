@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { signup } from "../api/planApi";
 import "./AuthPage.css";
 
 export default function SignupPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get("returnTo") ?? "/profile";
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -13,13 +16,12 @@ export default function SignupPage() {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
     setError(null);
     setIsSubmitting(true);
 
     try {
       await signup({ name, email, password });
-      navigate("/profile");
+      navigate(returnTo);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to create account.");
       setIsSubmitting(false);
@@ -29,18 +31,24 @@ export default function SignupPage() {
   return (
     <div className="auth-root">
       <main className="auth-card">
-        <h1>Create your account</h1>
-        <p>Save your profile and regenerate plans any time.</p>
+        <div className="auth-brand">
+          <span className="auth-brand-dot" />
+          <span className="auth-brand-name">MileSmith</span>
+        </div>
+
+        <h1>Create account</h1>
+        <p>Save your profile and access your plan anywhere.</p>
 
         <form onSubmit={handleSubmit} className="auth-form">
           <label>
             Name
             <input
               type="text"
-              placeholder="Runner name"
+              placeholder="Your name"
               required
               value={name}
-              onChange={(event) => setName(event.target.value)}
+              onChange={(e) => setName(e.target.value)}
+              autoComplete="name"
             />
           </label>
           <label>
@@ -50,29 +58,33 @@ export default function SignupPage() {
               placeholder="you@example.com"
               required
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
             />
           </label>
           <label>
             Password
             <input
               type="password"
-              placeholder="Create a password"
+              placeholder="Min. 8 characters"
               required
               minLength={8}
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
             />
           </label>
-          {error ? <p className="auth-error">{error}</p> : null}
+          {error && <p className="auth-error">{error}</p>}
           <button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Creating Account..." : "Sign Up"}
+            {isSubmitting ? "Creating account…" : "Create Account"}
           </button>
         </form>
 
+        <hr className="auth-divider" />
+
         <div className="auth-links">
-          <Link to="/login">Already have an account?</Link>
-          <Link to="/">Back home</Link>
+          <Link to={`/login${returnTo !== "/profile" ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`}>Already have an account?</Link>
+          <Link to="/">← Back home</Link>
         </div>
       </main>
     </div>

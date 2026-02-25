@@ -46,9 +46,15 @@ export async function createSavedPlan(params: {
 	planJson: unknown;
 }): Promise<SavedPlan> {
 	const client = await pool.connect();
+	const serializedProfileSnapshot = JSON.stringify(params.profileSnapshot ?? null);
+	const serializedPlanJson = JSON.stringify(params.planJson ?? null);
 
 	try {
 		await client.query("BEGIN");
+		await client.query(
+			`SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))`,
+			[params.userId, params.goal]
+		);
 		await client.query(
 			`
 				UPDATE plans
@@ -61,10 +67,10 @@ export async function createSavedPlan(params: {
 		const result = await client.query<PlanRow>(
 			`
 				INSERT INTO plans (user_id, goal, plan_type, profile_snapshot, plan_json, is_active)
-				VALUES ($1, $2, $3, $4, $5, true)
+				VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, true)
 				RETURNING id, user_id, goal, plan_type, profile_snapshot, plan_json, is_active, created_at
 			`,
-			[params.userId, params.goal, params.planType, params.profileSnapshot, params.planJson]
+			[params.userId, params.goal, params.planType, serializedProfileSnapshot, serializedPlanJson]
 		);
 
 		await client.query("COMMIT");

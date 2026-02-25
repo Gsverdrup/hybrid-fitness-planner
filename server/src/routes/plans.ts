@@ -59,7 +59,7 @@ router.get("/current", async (req, res) => {
     const plan = await getCurrentSavedPlan(req.userId as string, parsedGoal?.success ? parsedGoal.data : undefined);
 
     if (!plan) {
-      return res.status(404).json({ error: "No saved plan found." });
+      return res.json({ plan: null });
     }
 
     return res.json({ plan });

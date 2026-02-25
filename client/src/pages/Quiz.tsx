@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { GOAL_TO_SERVER_GOAL, generateRacePlan, savePlan } from "../api/planApi";
+import { GOAL_TO_SERVER_GOAL, generateRacePlan, getCurrentUser, savePlan } from "../api/planApi";
 import "./QuizPage.css";
 
 type Goal = "5k" | "10k" | "half" | "marathon";
@@ -582,14 +582,14 @@ function getRaceTimeRangeMinutes(raceDistanceKm: number): [number, number] | nul
 function formatTimeRange(minMinutes: number, maxMinutes: number): string {
   const formatTime = (mins: number) => {
     const totalSeconds = Math.round(mins * 60);
-    if (totalSeconds < 3600) {
-      const minutes = Math.floor(totalSeconds / 60);
-      const seconds = totalSeconds % 60;
-      return `${minutes}:${String(seconds).padStart(2, "0")}`;
-    }
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
-    return `${hours}:${String(minutes).padStart(2, "0")}`;
+    const seconds = totalSeconds % 60;
+    
+    if (hours > 0) {
+      return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+    }
+    return `${minutes}:${String(seconds).padStart(2, "0")}`;
   };
 
   return `${formatTime(minMinutes)} – ${formatTime(maxMinutes)}`;
@@ -959,17 +959,22 @@ export default function QuizPage() {
         JSON.stringify({
           plan,
           goal,
+          profileSnapshot: payload,
           createdAt: new Date().toISOString(),
         })
       );
 
       try {
-        await savePlan({
-          goal: GOAL_TO_SERVER_GOAL[goal],
-          profileSnapshot: payload,
-          plan,
-          planType: "race",
-        });
+        const currentUser = await getCurrentUser();
+
+        if (currentUser) {
+          await savePlan({
+            goal: GOAL_TO_SERVER_GOAL[goal],
+            profileSnapshot: payload,
+            plan,
+            planType: "race",
+          });
+        }
       } catch {}
 
       navigate("/plan", { state: { plan, goal } });
