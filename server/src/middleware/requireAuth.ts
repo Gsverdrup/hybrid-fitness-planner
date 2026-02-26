@@ -1,10 +1,10 @@
 import type { NextFunction, Request, Response } from "express";
-import { getSessionCookieName, verifySession } from "../auth/session";
+import { extractSessionToken, verifySession } from "../auth/session";
 
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
-  const rawToken = req.cookies?.[getSessionCookieName()];
+  const rawToken = extractSessionToken(req);
 
-  if (typeof rawToken !== "string" || !rawToken) {
+  if (!rawToken) {
     res.status(401).json({ error: "Authentication required." });
     return;
   }

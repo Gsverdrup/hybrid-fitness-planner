@@ -20,6 +20,7 @@ export type SavedPlan = {
 };
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3001";
+const AUTH_TOKEN_STORAGE_KEY = "hf_auth_token";
 
 const ENDPOINT_MAP: Record<Goal, string> = {
 	"5k": "/race-plan/5k",
@@ -48,6 +49,27 @@ async function parseResponseSafely(response: Response): Promise<unknown> {
 	}
 }
 
+function getStoredAuthToken(): string | null {
+	try {
+		const token = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+		return token && token.trim() ? token : null;
+	} catch {
+		return null;
+	}
+}
+
+function storeAuthToken(token: string | null): void {
+	try {
+		if (!token || !token.trim()) {
+			localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+			return;
+		}
+		localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
+	} catch {
+		// ignore storage errors
+	}
+}
+
 function extractErrorMessage(parsedBody: unknown, fallback: string): string {
 	if (typeof parsedBody === "object" && parsedBody !== null && "error" in parsedBody) {
 		const errorValue = (parsedBody as { error?: unknown }).error;
@@ -68,11 +90,14 @@ function extractErrorMessage(parsedBody: unknown, fallback: string): string {
 }
 
 async function request(path: string, init: RequestInit = {}): Promise<unknown> {
+	const storedToken = getStoredAuthToken();
+
 	const response = await fetch(`${API_BASE_URL}${path}`, {
 		...init,
 		credentials: "include",
 		headers: {
 			"Content-Type": "application/json",
+			...(storedToken ? { Authorization: `Bearer ${storedToken}` } : {}),
 			...(init.headers ?? {}),
 		},
 	});
@@ -90,7 +115,11 @@ export async function signup(input: { name: string; email: string; password: str
 	const parsed = (await request("/auth/signup", {
 		method: "POST",
 		body: JSON.stringify(input),
-	})) as { user: AuthUser };
+	})) as { user: AuthUser; token?: string };
+
+	if (typeof parsed.token === "string") {
+		storeAuthToken(parsed.token);
+	}
 
 	return parsed.user;
 }
@@ -99,13 +128,21 @@ export async function login(input: { email: string; password: string }): Promise
 	const parsed = (await request("/auth/login", {
 		method: "POST",
 		body: JSON.stringify(input),
-	})) as { user: AuthUser };
+	})) as { user: AuthUser; token?: string };
+
+	if (typeof parsed.token === "string") {
+		storeAuthToken(parsed.token);
+	}
 
 	return parsed.user;
 }
 
 export async function logout(): Promise<void> {
-	await request("/auth/logout", { method: "POST" });
+	try {
+		await request("/auth/logout", { method: "POST" });
+	} finally {
+		storeAuthToken(null);
+	}
 }
 
 export async function getCurrentUser(): Promise<AuthUser | null> {

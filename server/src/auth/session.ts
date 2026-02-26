@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import type { Response } from "express";
+import type { Request, Response } from "express";
 
 const SESSION_COOKIE = "hf_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
@@ -51,4 +51,24 @@ export function clearSessionCookie(res: Response): void {
 
 export function getSessionCookieName(): string {
   return SESSION_COOKIE;
+}
+
+export function extractSessionToken(req: Request): string | null {
+  const cookieToken = req.cookies?.[getSessionCookieName()];
+  if (typeof cookieToken === "string" && cookieToken.trim()) {
+    return cookieToken;
+  }
+
+  const authHeader = req.headers.authorization;
+  if (typeof authHeader !== "string") {
+    return null;
+  }
+
+  const [scheme, token] = authHeader.split(" ");
+  if (!scheme || !token || scheme.toLowerCase() !== "bearer") {
+    return null;
+  }
+
+  const trimmedToken = token.trim();
+  return trimmedToken.length > 0 ? trimmedToken : null;
 }

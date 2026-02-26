@@ -20,6 +20,7 @@ export default function LoginPage() {
 
     try {
       await login({ email, password });
+      window.dispatchEvent(new Event("authchange"));
       navigate(returnTo);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to sign in.");

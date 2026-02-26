@@ -21,6 +21,7 @@ export default function SignupPage() {
 
     try {
       await signup({ name, email, password });
+      window.dispatchEvent(new Event("authchange"));
       navigate(returnTo);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to create account.");

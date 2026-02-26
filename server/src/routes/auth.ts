@@ -1,7 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { clearSessionCookie, getSessionCookieName, setSessionCookie, signSession, verifySession } from "../auth/session";
+import { clearSessionCookie, extractSessionToken, setSessionCookie, signSession, verifySession } from "../auth/session";
 import { createUser, findUserByEmail, findUserById } from "../repositories/userRepository";
 
 const router = Router();
@@ -36,7 +36,7 @@ router.post("/signup", async (req, res) => {
     const token = signSession({ userId: user.id });
     setSessionCookie(res, token);
 
-    return res.status(201).json({ user });
+    return res.status(201).json({ user, token });
   } catch (error) {
     return res.status(500).json({ error: "Unable to create account.", details: (error as Error).message });
   }
@@ -67,6 +67,7 @@ router.post("/login", async (req, res) => {
     setSessionCookie(res, token);
 
     return res.json({
+      token,
       user: {
         id: user.id,
         name: user.name,
@@ -85,9 +86,8 @@ router.post("/logout", (_req, res) => {
 });
 
 router.get("/me", async (req, res) => {
-  const rawToken = req.cookies?.[getSessionCookieName()];
-
-  if (typeof rawToken !== "string" || !rawToken) {
+  const rawToken = extractSessionToken(req);
+  if (!rawToken) {
     return res.json({ user: null });
   }
 

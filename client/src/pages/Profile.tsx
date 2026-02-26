@@ -102,6 +102,7 @@ export default function ProfilePage() {
   const activePlan = savedPlan ?? cachedPlan;
   const planGoal = savedPlan?.goal ?? cachedPlan?.goal;
   const planDate = savedPlan?.createdAt ?? cachedPlan?.createdAt;
+  const isCachedOnlyPlan = !user && !!cachedPlan && !savedPlan;
   const initials = user?.name?.split(" ").map(n => n[0]).join("").slice(0, 2) ?? "?";
 
   if (loading) {
@@ -146,7 +147,10 @@ export default function ProfilePage() {
         {/* Plan Card */}
         {activePlan ? (
           <div className="profile-plan-card">
-            <p className="profile-card-label">Training Plan</p>
+            <p className="profile-card-label">{isCachedOnlyPlan ? "Local Device Plan" : "Training Plan"}</p>
+            {isCachedOnlyPlan && (
+              <p className="plan-date">This plan is saved on this device only until you sign in.</p>
+            )}
             <p className="plan-goal-badge">
               {planGoal ? GOAL_LABELS[planGoal] ?? planGoal : "Race"}
             </p>
