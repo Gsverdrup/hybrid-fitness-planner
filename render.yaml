@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: hybrid-fitness-planner-api
+    name: milesmith-api
     env: node
     rootDir: server
     plan: free
