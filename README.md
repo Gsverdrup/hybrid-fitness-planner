@@ -107,3 +107,66 @@ npm run dev
 
 Client default: `http://localhost:5173`  
 Server default: `http://localhost:3001`
+
+## Free Production Deployment (Cloudflare Pages + Render + Neon)
+
+This setup is optimized for low-cost, low-maintenance hosting.
+
+### 1) Create a Neon Postgres database
+1. Create a new project in Neon.
+2. Run `server/sql/001_auth_and_plans.sql` against the Neon database.
+3. Copy connection values for:
+	- `PGHOST`
+	- `PGPORT`
+	- `PGDATABASE`
+	- `PGUSER`
+	- `PGPASSWORD`
+
+### 2) Deploy API on Render (Web Service)
+- Repository: this repo
+- Root directory: `server`
+- Build command: `npm install`
+- Start command: `npm run start`
+
+#### Optional: use Blueprint config (`render.yaml`)
+Instead of filling all Render settings manually:
+1. In Render, create a new **Blueprint** and connect this repo.
+2. Render reads `render.yaml` and preconfigures the API service.
+3. Fill required env values for Neon and your frontend domain.
+
+Set Render environment variables:
+```bash
+NODE_ENV=production
+JWT_SECRET=replace-with-a-long-random-secret
+CLIENT_ORIGIN=https://<your-cloudflare-pages-domain>
+
+PGHOST=<from-neon>
+PGPORT=<from-neon>
+PGDATABASE=<from-neon>
+PGUSER=<from-neon>
+PGPASSWORD=<from-neon>
+PGSSLMODE=require
+```
+
+After deploy, verify:
+- `GET https://<your-render-service>.onrender.com/health` returns `{ "status": "ok" }`.
+
+### 3) Deploy frontend on Cloudflare Pages
+- Framework preset: `Vite`
+- Root directory: `client`
+- Build command: `npm run build`
+- Build output directory: `dist`
+
+Set Cloudflare Pages environment variable:
+```bash
+VITE_API_BASE_URL=https://<your-render-service>.onrender.com
+```
+
+### 4) CORS + cookies checklist
+- `CLIENT_ORIGIN` must exactly match your Pages domain (including `https://`).
+- Keep `credentials: "include"` on client requests (already configured).
+- In production, auth cookies are `Secure` + `SameSite=None` (already configured).
+
+### 5) Free-tier behavior to expect
+- Render free instances can sleep; first API request may be slow.
+- Keep Render and Neon in the same region to reduce latency.
