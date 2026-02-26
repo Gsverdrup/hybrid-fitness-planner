@@ -1,4 +1,4 @@
-# Hybrid Fitness Planner
+# MileSmith
 
 MileSmith is a full-stack app that builds personalized race training plans with integrated lifting. It supports 5K, 10K, Half Marathon, and Marathon plans, with account-based plan saving and profile-aware generation.
 
